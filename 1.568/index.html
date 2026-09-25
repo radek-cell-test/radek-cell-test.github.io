@@ -1,0 +1,1499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="LabCal">
+<meta name="theme-color" content="#dfe6ee">
+<link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22LabCal%20Calibration%20Suite%22%2C%22short_name%22%3A%22LabCal%22%2C%22display%22%3A%22fullscreen%22%2C%22start_url%22%3A%22.%2Findex.html%22%2C%22background_color%22%3A%22%23dfe6ee%22%2C%22theme_color%22%3A%22%23dfe6ee%22%7D">
+<title>LabCal — Calibration Suite</title>
+<script src="labcal_offsets.js"></script>
+<script src="labcal_jobsheet.js"></script>
+<script src="labcal_testmode.js"></script>
+<script src="labcal_save.js"></script>
+<script src="labcal_certs.js"></script>
+<script src="labcal_units.js"></script>
+<script src="labcal_backup.js"></script>
+<script src="labcal_pdf.js"></script>
+<style>
+:root{
+  --bg:#dfe6ee;
+  --bg2:#eef3f7;
+  --panel:#ffffff;
+  --panel-hi:#eef8f6;
+  --border:#c9d4dd;
+  --border-soft:#d3dce4;
+  --ink:#12161c;
+  --muted:#57626d;
+  --muted-dim:#828d98;
+  --cyan:#0f9488;
+  --cyan-dim:#4fb3a8;
+  --amber:#a9690a;
+  --amber-dim:#e3c496;
+  --green:#1f9d55;
+  --mono:ui-monospace,"SF Mono","IBM Plex Mono",Consolas,"Roboto Mono",monospace;
+  --sans:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:
+    radial-gradient(circle at 15% 0%, var(--bg2) 0%, transparent 45%),
+    radial-gradient(circle at 100% 20%, #e6edf3 0%, transparent 40%),
+    var(--bg);
+  color:var(--ink);
+  font-family:var(--sans);
+  min-height:100vh;
+  min-height:100dvh;
+  -webkit-font-smoothing:antialiased;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* faint calibration grid backdrop */
+.gridlines{
+  position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(rgba(20,30,40,.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(20,30,40,.05) 1px, transparent 1px);
+  background-size:34px 34px;
+  mask-image:linear-gradient(to bottom, black, transparent 85%);
+}
+
+.wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:0 28px 80px}
+@media (max-width:620px){.wrap{padding:0 18px 56px}}
+
+/* ---- header ---- */
+header{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:34px 0 22px;border-bottom:1px solid var(--border-soft);
+  flex-wrap:wrap;gap:16px;
+}
+.wordmark{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.wordmark .mark{font-family:var(--mono);font-weight:700;font-size:23px;letter-spacing:.5px;color:var(--ink)}
+.wordmark .tag{
+  font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:1.4px;
+  color:#fff;background:var(--cyan);padding:3px 7px;border-radius:2px;
+  text-transform:uppercase;
+}
+.brandcol{display:flex;flex-direction:column;gap:10px}
+.labcold-logo{font-family:var(--sans);font-size:24px;font-weight:900;letter-spacing:1px;color:var(--ink)}
+.labcold-logo small{display:block;font-size:8.5px;letter-spacing:.4px;font-weight:700;background:#2a2f35;color:#fff;width:max-content;padding:1px 8px;margin-left:30px}
+.hstat{text-align:right;font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.7}
+.hstat b{color:var(--ink);font-weight:600}
+.hstat .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:5px;box-shadow:0 0 0 3px rgba(63,200,121,.18)}
+.hgroup{display:flex;align-items:center;gap:14px}
+.fsbtn{
+  display:flex;align-items:center;justify-content:center;
+  width:32px;height:32px;border-radius:6px;
+  background:transparent;border:1px solid var(--border);color:var(--muted);
+  cursor:pointer;padding:0;flex-shrink:0;
+  transition:border-color .15s ease, color .15s ease, background .15s ease;
+}
+.fsbtn:hover{border-color:var(--cyan-dim);color:var(--cyan)}
+.fsbtn:active{background:var(--panel-hi)}
+.fsbtn svg{width:16px;height:16px}
+.fsbtn .icon-exit{display:none}
+body.is-fullscreen .fsbtn .icon-enter{display:none}
+body.is-fullscreen .fsbtn .icon-exit{display:block}
+@media (max-width:480px){
+  header{padding:22px 0 18px;gap:10px}
+  .wordmark .mark{font-size:19px}
+  .labcold-logo{font-size:19px}
+  .labcold-logo small{margin-left:24px}
+  .hstat{text-align:left}
+}
+
+/* ---- hero ---- */
+.hero{position:relative;padding:22px 0 18px;overflow:hidden}
+.trace{position:absolute;top:-6px;right:-40px;width:460px;max-width:46%;opacity:.22;pointer-events:none}
+.eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:1.8px;color:var(--cyan);text-transform:uppercase;margin:0 0 6px}
+h1{font-size:clamp(22px,3vw,32px);line-height:1.15;margin:0 0 6px;font-weight:700;letter-spacing:-.5px;max-width:26ch}
+.lede{color:var(--muted);font-size:13.5px;line-height:1.5;max-width:62ch;margin:0}
+@media (max-width:620px){
+  .hero{padding:36px 0 28px}
+  .trace{opacity:.18;width:300px;top:-10px;right:-60px}
+  .lede{font-size:15px}
+}
+@media (max-width:380px){
+  .trace{display:none}
+}
+
+/* ---- offline download box ---- */
+.offlinebox{
+  margin-top:28px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
+  background:var(--panel);border:1px solid var(--border);border-radius:8px;
+  padding:16px 20px;box-shadow:0 1px 3px rgba(20,30,40,.06);
+}
+.offlinebox-title{font-size:14px;font-weight:650;color:var(--ink);display:flex;align-items:center;gap:8px}
+.offlinebox-title .statusdot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--muted-dim);flex-shrink:0}
+.offlinebox.ready .offlinebox-title .statusdot{background:var(--green);box-shadow:0 0 0 3px rgba(63,200,121,.18)}
+.offlinebox.error .offlinebox-title .statusdot{background:#c0392b}
+.offlinebox-sub{font-size:12.5px;color:var(--muted);line-height:1.5;margin-top:4px;max-width:52ch}
+.dlbtn{
+  display:flex;align-items:center;gap:8px;flex-shrink:0;
+  font-family:var(--sans);font-size:13px;font-weight:650;color:#fff;
+  background:var(--cyan);border:none;border-radius:6px;padding:11px 18px;
+  cursor:pointer;transition:background .15s ease, opacity .15s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+.dlbtn:hover{background:#0c7a70}
+.dlbtn:disabled{opacity:.65;cursor:default}
+.dlbtn svg{width:16px;height:16px;flex-shrink:0}
+.offlinebox.ready .dlbtn{background:var(--green)}
+.offlinebox.ready .dlbtn:hover{background:#187f43}
+@media (max-width:620px){
+  .offlinebox{padding:14px 16px}
+  .dlbtn{width:100%;justify-content:center}
+}
+
+/* ---- probe offsets vault ---- */
+.vaultwarn{
+  display:none;margin:0 0 16px;border-radius:8px;padding:14px 18px;
+  border:1.5px solid #c0392b;background:#fdecea;color:#7a1c12;
+  font-size:13.5px;line-height:1.55;font-weight:600;
+}
+.vaultwarn.show{display:block}
+.vaultwarn.soft{border-color:var(--amber);background:#fdf3e3;color:#7a4c06}
+.vaultwarn.info{border-color:var(--border);background:var(--panel);color:var(--muted);font-weight:500}
+.vaultwarn b{display:block;font-size:14.5px;margin-bottom:4px;letter-spacing:-.2px}
+.vaultwarn.critical{animation:vaultPulse 1.6s infinite}
+@keyframes vaultPulse{0%,100%{box-shadow:0 0 0 0 rgba(192,57,43,.28)}50%{box-shadow:0 0 0 7px rgba(192,57,43,0)}}
+
+.vault{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:22px}
+@media (max-width:820px){.vault{grid-template-columns:1fr;gap:10px}}
+.slot{
+  background:var(--panel);border:1px solid var(--border);border-radius:8px;
+  padding:12px 14px;box-shadow:0 1px 3px rgba(20,30,40,.06);
+  display:grid;grid-template-columns:1fr auto;grid-template-areas:'head count' 'meta count' 'act act';
+  column-gap:14px;align-items:start;
+}
+.slot .slot-top{grid-area:head}
+.slot .countdown{grid-area:count;text-align:right;margin:0;align-self:center}
+.slot .slot-meta{grid-area:meta}
+.slot .slot-actions{grid-area:act}
+.slot.lvl-none{border-style:dashed}
+.slot.lvl-ok{border-color:var(--cyan-dim)}
+.slot.lvl-soon{border-color:var(--amber-dim)}
+.slot.lvl-critical,.slot.lvl-expired{border-color:#e0a49c;background:#fffaf9}
+.slot-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.slot h4{font-size:14px;margin:6px 0 2px;font-weight:650;letter-spacing:-.2px}
+.slot .used{font-family:var(--mono);font-size:9.5px;color:var(--muted-dim);line-height:1.4}
+.pill{
+  font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.6px;
+  padding:4px 9px;border-radius:3px;white-space:nowrap;text-transform:uppercase;
+}
+.pill.none{border:1.5px dashed var(--muted-dim);color:var(--muted-dim)}
+.pill.ok{border:1.5px solid var(--green);color:var(--green)}
+.pill.soon{border:1.5px solid var(--amber);color:var(--amber)}
+.pill.critical,.pill.expired{border:1.5px solid #c0392b;color:#fff;background:#c0392b}
+.pill.expired{animation:pillBlink 1.4s infinite}
+@keyframes pillBlink{0%,100%{opacity:1}50%{opacity:.5}}
+
+.countdown{margin:0}
+.countdown .num{font-family:var(--mono);font-size:23px;font-weight:700;letter-spacing:-.5px;line-height:1;white-space:nowrap}
+.countdown .num small{display:block;font-size:9.5px;font-weight:600;letter-spacing:.4px;color:var(--muted);margin-top:2px}
+.slot.lvl-ok .countdown .num{color:var(--green)}
+.slot.lvl-soon .countdown .num{color:var(--amber)}
+.slot.lvl-critical .countdown .num,.slot.lvl-expired .countdown .num{color:#c0392b}
+.track{height:4px;border-radius:3px;background:var(--bg2);border:1px solid var(--border-soft);margin-top:6px;overflow:hidden;min-width:110px}
+.track i{display:block;height:100%;background:var(--green)}
+.slot.lvl-soon .track i{background:var(--amber)}
+.slot.lvl-critical .track i,.slot.lvl-expired .track i{background:#c0392b}
+
+.slot-meta{
+  margin:8px 0 0;padding-top:8px;border-top:1px solid var(--border-soft);
+  font-size:11px;color:var(--muted);line-height:1.6;
+}
+.slot-meta span{font-family:var(--mono);color:var(--ink)}
+.slot-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.sbtn{
+  font-family:var(--sans);font-size:12px;font-weight:650;color:#fff;
+  background:var(--cyan);border:none;border-radius:6px;padding:7px 13px;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;transition:background .15s ease;
+}
+.sbtn:hover{background:#0c7a70}
+.sbtn.ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
+.sbtn.ghost:hover{color:#c0392b;border-color:#e0a49c;background:transparent}
+@media (max-width:620px){.sbtn{flex:1;text-align:center}}
+
+/* ---- settings drawer ---- */
+.setbar{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  margin:0 0 14px;
+}
+.setbtn{
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:var(--mono);font-size:11.5px;font-weight:650;letter-spacing:.3px;
+  color:var(--muted);background:var(--panel);border:1px solid var(--border);
+  border-radius:7px;padding:9px 14px;cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+.setbtn:hover{border-color:var(--cyan-dim);color:var(--cyan)}
+.setbtn svg{width:14px;height:14px;transition:transform .18s ease}
+.setbtn[aria-expanded="true"] svg.chev{transform:rotate(180deg)}
+.setbar .hint{font-family:var(--mono);font-size:10.5px;color:var(--muted-dim)}
+.setbar .hint b{color:var(--ink);font-weight:600}
+.setbar .hint.due{color:#a9690a}
+.setbar .hint.overdue{color:#c0392b;font-weight:700}
+#settingsDrawer{display:none}
+#settingsDrawer.open{display:block}
+
+/* ---- backup & restore ---- */
+.backup{
+  background:var(--panel);border:1px solid var(--border);border-radius:8px;
+  padding:14px 16px;margin:0 0 10px;box-shadow:0 1px 3px rgba(20,30,40,.06);
+}
+.backup.warn{border-color:var(--amber-dim);background:#fffdf7}
+.backup.stale{border-color:#e0a49c;background:#fffaf9}
+.backup-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+.backup h4{font-size:15.5px;margin:0;font-weight:650;letter-spacing:-.2px}
+.backup .when{font-family:var(--mono);font-size:11px;color:var(--muted-dim);margin-top:4px;line-height:1.6}
+.backup .when b{color:var(--ink)}
+.backup .when.due{color:#a9690a}
+.backup .when.overdue{color:#c0392b;font-weight:600}
+.backup p.why{font-size:12.5px;color:var(--muted);line-height:1.55;margin:12px 0 0}
+.backup-actions{display:flex;gap:8px;flex-wrap:wrap}
+.backup label.inc{
+  display:flex;align-items:center;gap:7px;margin-top:12px;
+  font-size:12.5px;color:var(--muted);cursor:pointer;
+}
+.backup label.inc input{width:16px;height:16px}
+.restore-report{
+  margin-top:12px;font-family:var(--mono);font-size:11px;line-height:1.7;
+  background:var(--bg2);border:1px solid var(--border-soft);border-radius:5px;padding:10px 12px;color:var(--muted);
+}
+.restore-report b{color:var(--ink)}
+
+/* ---- module self-check ---- */
+/* ---- v1.546: Home Screen install help ---- */
+.homehint{display:none;background:var(--panel);border:1px solid #9ecfc8;border-left:5px solid #0f9488;border-radius:8px;
+  padding:14px 16px;margin:0 0 14px;box-shadow:0 1px 3px rgba(20,30,40,.06)}
+.homehint.show{display:block}
+.homehint.restore{border-color:#e7c98f;border-left-color:#d08a1a;background:#fffdf7}
+.homehint h4{margin:0 0 6px;font-size:15.5px;font-weight:650;letter-spacing:-.2px}
+.homehint p{margin:0 0 8px;font-size:12.8px;color:var(--muted);line-height:1.55}
+.homehint ol{margin:6px 0 10px;padding-left:22px;font-size:13px;line-height:1.6;color:var(--ink)}
+.homehint ol li{margin-bottom:4px}
+.homehint .hh-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.homehint .hh-icon{display:inline-block;vertical-align:-3px;width:15px;height:15px}
+.selfcheck{
+  display:none;margin:0 0 20px;border-radius:8px;padding:14px 18px;
+  border:1.5px solid #c0392b;background:#fdecea;color:#7a1c12;
+  font-size:13.5px;line-height:1.55;
+}
+.selfcheck.show{display:block}
+.selfcheck b{display:block;font-size:14.5px;margin-bottom:5px}
+.selfcheck code{font-family:var(--mono);font-size:12px;background:#fff;padding:1px 5px;border-radius:3px;border:1px solid #f0c5be}
+.selfcheck .ver{font-family:var(--mono);font-size:11px;margin-top:8px;color:#8a3222}
+
+/* ---- PDF quality ---- */
+.pdfq{
+  background:var(--panel);border:1px solid var(--border);border-radius:8px;
+  padding:12px 16px;margin:0 0 24px;box-shadow:0 1px 3px rgba(20,30,40,.06);
+  display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;
+}
+.pdfq h4{font-size:14.5px;margin:0;font-weight:650;letter-spacing:-.2px}
+.pdfq .note{font-family:var(--mono);font-size:10.5px;color:var(--muted-dim);margin-top:4px;line-height:1.6}
+.pdfq select{
+  font-family:var(--sans);font-size:13px;padding:9px 12px;border:1px solid var(--border);
+  border-radius:6px;background:#fff;color:var(--ink);
+}
+@media (max-width:620px){.pdfq select{flex:1}}
+
+/* locked section card (offsets not loaded yet) */
+.card.locked{opacity:.9;cursor:not-allowed}
+.card.locked .icon{color:var(--muted-dim)}
+.lockmsg{
+  display:flex;align-items:center;gap:7px;margin-top:14px;
+  font-family:var(--mono);font-size:10.5px;line-height:1.5;
+  color:#8a3222;background:#fdecea;border:1px solid #f0c5be;border-radius:4px;padding:7px 9px;
+}
+.lockmsg svg{width:13px;height:13px;flex-shrink:0}
+
+/* ---- section label ---- */
+.section-label{
+  display:flex;align-items:center;gap:14px;margin:4px 0 14px;
+  font-family:var(--mono);font-size:12px;letter-spacing:1.5px;color:var(--muted-dim);text-transform:uppercase;
+}
+.section-label::after{content:"";flex:1;height:1px;background:var(--border-soft)}
+
+/* ---- grid of tool cards ---- */
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media (max-width:920px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:620px){.grid{grid-template-columns:1fr;gap:12px}}
+
+.card{
+  position:relative;display:flex;flex-direction:column;
+  background:var(--panel);border:1px solid var(--border);border-radius:8px;
+  padding:20px 20px 16px;min-height:230px;
+  text-decoration:none;color:inherit;
+  box-shadow:0 1px 3px rgba(20,30,40,.06);
+  transition:transform .16s ease, border-color .16s ease, background .16s ease, box-shadow .16s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+@media (max-width:620px){
+  .card{min-height:0;padding:18px}
+}
+.card.active:hover{transform:translateY(-3px);border-color:var(--cyan-dim);background:var(--panel-hi);box-shadow:0 10px 22px rgba(20,30,40,.10)}
+.card.active:active{transform:translateY(0);background:var(--panel-hi)}
+.card.active:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.card.planned{border-style:dashed;opacity:.75;cursor:default;box-shadow:none}
+
+.card-top{display:flex;justify-content:space-between;align-items:flex-start}
+.code{font-family:var(--mono);font-size:11px;color:var(--muted-dim);letter-spacing:1px}
+.icon{width:30px;height:30px;color:var(--muted)}
+.card.active .icon{color:var(--cyan)}
+
+.stamp{
+  font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:1px;
+  padding:3px 8px;border-radius:2px;transform:rotate(4deg);white-space:nowrap;
+}
+.stamp.ready{border:1.5px solid var(--green);color:var(--green)}
+.stamp.dev{border:1.5px dashed var(--amber);color:var(--amber)}
+
+.card h3{font-size:17px;margin:16px 0 6px;font-weight:650;letter-spacing:-.2px}
+.card p{font-size:13px;color:var(--muted);line-height:1.55;margin:0;flex:1}
+
+.card-foot{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-top:16px;padding-top:12px;border-top:1px solid var(--border-soft);
+  font-family:var(--mono);font-size:10.5px;color:var(--muted-dim);
+}
+.open{display:flex;align-items:center;gap:5px;color:var(--cyan);font-weight:600}
+.card.active:hover .open{gap:8px}
+.open svg{width:13px;height:13px;transition:transform .16s ease}
+
+/* ---- top-level section (category) cards ---- */
+.grid.cats{grid-template-columns:repeat(2,1fr);gap:18px}
+@media (max-width:920px){.grid.cats{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:700px){.grid.cats{grid-template-columns:1fr;gap:12px}}
+.grid.cats .card{min-height:280px;padding:24px 24px 18px}
+@media (max-width:620px){.grid.cats .card{min-height:0;padding:20px}}
+.grid.cats .card h3{font-size:21px;margin:18px 0 8px}
+.grid.cats .icon{width:34px;height:34px}
+
+/* the little list of what lives inside a section */
+.contents{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.chip{
+  font-family:var(--mono);font-size:10px;letter-spacing:.3px;
+  color:var(--muted);background:var(--bg2);
+  border:1px solid var(--border-soft);border-radius:3px;padding:3px 7px;
+  white-space:nowrap;
+}
+.chip.soon{border-style:dashed;color:var(--muted-dim);background:transparent}
+
+/* add-new tile */
+.card.addnew{
+  align-items:center;justify-content:center;text-align:center;
+  border-style:dashed;color:var(--muted-dim);min-height:230px;
+}
+@media (max-width:620px){
+  .card.addnew{min-height:110px;padding:24px 18px}
+}
+.card.addnew .icon{width:26px;height:26px;margin-bottom:10px;color:var(--muted-dim)}
+.card.addnew span{font-family:var(--mono);font-size:11px;letter-spacing:.5px}
+
+footer{
+  margin-top:56px;padding-top:18px;border-top:1px solid var(--border-soft);
+  display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;
+  font-family:var(--mono);font-size:10.5px;color:var(--muted-dim);
+}
+
+@media (prefers-reduced-motion:reduce){
+  .card{transition:none}
+  .vaultwarn.critical,.pill.expired{animation:none}
+}
+
+/* ---- v1.552 status strip ---- */
+.statusstrip{display:flex;flex-wrap:wrap;gap:10px;padding:18px 0 16px}
+.schip{
+  display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:8px 14px;
+  border-radius:999px;border:1px solid var(--border);background:var(--panel);
+  font-family:var(--sans);font-size:13.5px;color:var(--ink);cursor:pointer;
+  box-shadow:0 1px 2px rgba(20,30,40,.05);
+}
+.schip .sdot{width:9px;height:9px;border-radius:50%;background:var(--muted-dim);flex-shrink:0}
+.schip .slabel{font-family:var(--mono);font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
+.schip .svalue{font-weight:650}
+.schip.ok{border-color:#b9e2c9}
+.schip.ok .sdot{background:var(--green);box-shadow:0 0 0 3px rgba(63,200,121,.18)}
+.schip.warn{border-color:var(--amber);background:#fdf3e3}
+.schip.warn .sdot{background:var(--amber)}
+.schip.warn .svalue{color:#7a4c06}
+.schip.bad{border-color:#c0392b;background:#fdecea}
+.schip.bad .sdot{background:#c0392b}
+.schip.bad .svalue{color:#a3261b}
+.schip:active{transform:translateY(1px)}
+.drawergroup{margin-top:6px}
+.setbar{margin-top:22px}
+.drawergroup .section-label{margin-top:18px}
+#settingsDrawer .offlinebox{margin:0 0 10px}
+
+/* ---- v1.553 update banner ---- */
+.updatebanner{display:none;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  margin:0 0 14px;padding:14px 18px;border:1px solid var(--cyan);border-radius:10px;background:var(--panel-hi)}
+.updatebanner.show{display:flex}
+.updatebanner b{display:block;font-size:15px;margin-bottom:2px}
+.updatebanner span{font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<div class="gridlines"></div>
+
+<div class="wrap">
+
+  <header>
+    <div class="brandcol">
+      <div class="wordmark">
+        <span class="mark">LABCAL</span>
+        <span class="tag">Calibration Suite</span>
+      </div>
+      <div class="labcold-logo">❄ LABCOLD<small>medical &amp; scientific refrigeration</small></div>
+    </div>
+    <div class="hgroup">
+      <div class="hstat" id="hstat">
+        <div><span class="dot"></span><b id="toolCount">–</b> tools · <b id="activeCount">–</b> active</div>
+        <div id="todayDate">—</div>
+      </div>
+      <button class="fsbtn" id="fsToggle" type="button" aria-label="Toggle fullscreen" title="Toggle fullscreen">
+        <svg class="icon-enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+        <svg class="icon-exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v3a2 2 0 0 1-2 2H4M15 3v3a2 2 0 0 0 2 2h3M9 21v-3a2 2 0 0 0-2-2H4M15 21v-3a2 2 0 0 1 2-2h3"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- v1.552: one status line instead of the big hero, offline box and
+       offsets cards. Each chip is green / amber / red and opens the
+       Settings drawer at the matching panel when tapped. -->
+  <div class="statusstrip" id="statusStrip" aria-live="polite"></div>
+  <div class="updatebanner" id="updateBanner" role="status"></div>
+
+  <div class="vaultwarn" id="vaultWarn"></div>
+  <div class="selfcheck" id="selfCheck"></div>
+  <div class="homehint" id="homeHint"></div>
+
+  <div class="section-label">Choose an area</div>
+
+  <div class="grid cats" id="grid"></div>
+
+  <div class="setbar">
+    <button class="setbtn" type="button" id="settingsToggle" aria-expanded="false" aria-controls="settingsDrawer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6h.09A1.65 1.65 0 0 0 10.6 3.09V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+      Settings
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+    <span class="hint" id="settingsHint"></span>
+  </div>
+
+  <div id="settingsDrawer">
+    <div class="drawergroup" id="grpOffsets">
+      <div class="section-label">Reference thermometer offsets</div>
+      <div class="vault" id="vault"></div>
+      <input id="vaultFile" type="file" accept="application/json,.json" style="display:none">
+    </div>
+    <div class="drawergroup" id="grpOffline">
+      <div class="section-label">Offline copy</div>
+    <div class="offlinebox" id="offlinebox">
+      <div class="offlinebox-text">
+        <div class="offlinebox-title" id="offlineTitle">Checking offline status…</div>
+        <div class="offlinebox-sub" id="offlineSub">This installs every worksheet and its libraries so the suite keeps working with no signal — ideal for iPad in the lab.</div>
+      </div>
+      <button class="dlbtn" id="dlBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13m0 0 4-4m-4 4-4-4M5 21h14"/></svg>
+        <span id="dlBtnLabel">Download for offline use</span>
+      </button>
+    </div>
+    </div>
+    <div class="drawergroup" id="grpBackup">
+      <div class="section-label">Backup &amp; certificates</div>
+      <div class="backup" id="backupPanel"></div>
+      <div class="pdfq" id="pdfQualityPanel"></div>
+    </div>
+  </div>
+  <input id="restoreFile" type="file" accept="application/json,.json" style="display:none">
+
+
+  <footer>
+    <span>LabCal Calibration Suite · offline worksheet toolkit</span>
+    <span id="footYear">v1.568</span>
+  </footer>
+
+</div>
+
+<script>
+// ---------------------------------------------------------------------
+// Add new tools here — each entry renders one card. To wire up a new
+// worksheet, add an object with status:'active' and the correct href.
+// ---------------------------------------------------------------------
+// Two top-level sections. Each one is its own page holding the individual
+// cards — calibration.html for worksheets, tools.html for utilities.
+// `contents` is just the preview list shown on this tile; the real list of
+// tools lives in the section page itself.
+const sections = [
+  {
+    code:'SEC-01',
+    title:'Calibration',
+    desc:'Every UKAS calibration worksheet — Barkey, standard medical and non-medical devices, the 19/24 range, and the monitoring systems.',
+    href:'calibration.html',
+    status:'active',
+    meta:'7 worksheets · 7 active',
+    icon:'snowflake',
+    // Worksheets can't calculate anything without probe corrections, so this
+    // section stays locked until at least one offsets file is in the vault.
+    requiresOffsets:true,
+    contents:[
+      {label:'Barkey'},
+      {label:'Standard Medical'},
+      {label:'Non-Standard Medical'},
+      {label:'IBB / Blood Bank'},
+      {label:'Standard Non-Medical'},
+      {label:'19 / 24 Range'},
+      {label:'Monitoring Systems'}
+    ]
+  },
+  {
+    code:'SEC-02',
+    title:'Tools & Utilities',
+    desc:'Supporting tools for engineers — controller log review, reporting and document handling. Not calibration forms, but everything around them.',
+    href:'tools.html',
+    status:'active',
+    meta:'2 tools · 2 active',
+    icon:'tools',
+    contents:[
+      {label:'Data Logger Viewer'},
+      {label:'PDF Merge & Reorder'}
+    ]
+  },
+];
+
+const icons = {
+  snowflake:'<path d="M12 2v20M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07M12 5.5l-2-1.5m2 1.5l2-1.5M12 18.5l-2 1.5m2-1.5l2 1.5M7.05 7.05l-2.3-.3m2.3.3l-.3-2.3M16.95 7.05l2.3-.3m-2.3.3l.3-2.3M7.05 16.95l-2.3.3m2.3-.3l-.3 2.3M16.95 16.95l2.3.3m-2.3-.3l.3 2.3"/>',
+  tools:'<rect x="2" y="8" width="20" height="12" rx="2"/><path d="M8 8V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M2 13h20"/><path d="M9.5 13v2.2M14.5 13v2.2"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
+  lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>'
+};
+
+function iconSvg(name, extra=''){
+  return `<svg class="icon ${extra}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${icons[name]||''}</svg>`;
+}
+
+function renderCards(){
+  const grid = document.getElementById('grid');
+  let html = '';
+
+  // Fail open: if the shared vault module is unavailable for any reason, the
+  // section stays clickable and each worksheet falls back to its own
+  // "Load offsets" button rather than locking the engineer out entirely.
+  const vaultReady = !window.LabCalOffsets || LabCalOffsets.summary().anyCurrent;
+
+  sections.forEach(s=>{
+    const locked = s.requiresOffsets && !vaultReady;
+    const isActive = s.status === 'active' && !locked;
+    const chips = (s.contents||[]).map(c=>
+      `<span class="chip${c.soon?' soon':''}">${c.label}${c.soon?' · soon':''}</span>`
+    ).join('');
+    html += `
+    <a class="card ${isActive?'active':(locked?'locked':'planned')}" ${isActive?`href="${s.href}"`:'href="javascript:void(0)" aria-disabled="true"'}>
+      <div class="card-top">
+        <span class="code">${s.code}</span>
+        ${iconSvg(s.icon)}
+      </div>
+      <h3>${s.title}</h3>
+      <p>${s.desc}</p>
+      <div class="contents">${chips}</div>
+      ${locked?`<div class="lockmsg">${icons.lock}Load a probe offsets file in Settings below to unlock the worksheets.</div>`:''}
+      <div class="card-foot">
+        <span>${s.meta}</span>
+        ${isActive?`<span class="open">Open <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icons.arrow}</svg></span>`:'<span>—</span>'}
+      </div>
+    </a>`;
+  });
+
+  setHtml(grid, html);
+
+  // Headline counts cover everything the suite can open, across both sections.
+  const all = sections.flatMap(s=>s.contents||[]);
+  document.getElementById('toolCount').textContent = all.length;
+  document.getElementById('activeCount').textContent = all.filter(c=>!c.soon).length;
+}
+
+function renderDate(){
+  const d = new Date();
+  const opts = {day:'2-digit', month:'short', year:'numeric'};
+  document.getElementById('todayDate').textContent = d.toLocaleDateString('en-GB', opts).toUpperCase();
+  document.getElementById('footYear').textContent = 'v1.568 · ' + d.getFullYear();
+}
+
+// ---- Fullscreen toggle (Android/desktop browsers; on iOS, use
+// "Add to Home Screen" instead — Safari does not expose this API) ----
+function setupFullscreen(){
+  const btn = document.getElementById('fsToggle');
+  if(!btn) return;
+
+  const fsSupported = document.documentElement.requestFullscreen
+    || document.documentElement.webkitRequestFullscreen
+    || document.documentElement.msRequestFullscreen;
+
+  if(!fsSupported){
+    btn.style.display = 'none';
+    return;
+  }
+
+  function isFullscreen(){
+    return !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+  }
+
+  function updateState(){
+    document.body.classList.toggle('is-fullscreen', isFullscreen());
+  }
+
+  btn.addEventListener('click', ()=>{
+    try{
+      if(!isFullscreen()){
+        const el = document.documentElement;
+        (el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen).call(el);
+      }else{
+        (document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen).call(document);
+      }
+    }catch(e){ /* fullscreen request rejected — ignore silently */ }
+  });
+
+  ['fullscreenchange','webkitfullscreenchange','msfullscreenchange'].forEach(evt=>{
+    document.addEventListener(evt, updateState);
+  });
+}
+
+// ---------------------------------------------------------------------
+// Probe offsets vault — load each ecosystem's JSON once, here, and every
+// worksheet picks it up for as long as the certificate is valid.
+// ---------------------------------------------------------------------
+const vaultEl = document.getElementById('vault');
+const vaultWarnEl = document.getElementById('vaultWarn');
+const vaultFileEl = document.getElementById('vaultFile');
+let pendingDevice = null;
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// Only touch the DOM when the markup has genuinely changed. Rewriting
+// innerHTML destroys the element under the user's finger, so a redraw that
+// changes nothing can still swallow a tap on a touchscreen.
+function setHtml(el, html){
+  if(!el || el.__labcalHtml === html) return false;
+  el.__labcalHtml = html;
+  el.innerHTML = html;
+  return true;
+}
+
+function renderVault(){
+  if(!vaultEl || !window.LabCalOffsets) return;
+  const infos = LabCalOffsets.all();
+
+  const html = infos.map(i=>{
+    // Bar shows how much of a 12-month certificate is left.
+    const pct = i.loaded && !i.expired ? Math.max(2, Math.min(100, Math.round((i.daysLeft/365)*100))) : (i.expired?100:0);
+    const big = !i.loaded ? '—' : (i.expired ? 'EXPIRED' : i.daysLeft);
+    const bigUnit = (!i.loaded || i.expired) ? '' : `<small>day${i.daysLeft===1?'':'s'} left</small>`;
+    const details = i.loaded ? `
+      <div class="slot-meta">
+        Reference thermometer: <span>${esc(i.refThermSerial||'—')}</span><br>
+        Probes: <span>${i.probes}</span>${i.roomTherms?` · Room thermometers: <span>${i.roomTherms}</span>`:''}${i.stopwatches?` · Stopwatches: <span>${i.stopwatches}</span>`:''}<br>
+        Certificate valid until <span>${esc(i.validLabel)}</span>${i.engineerName?` · Engineer: <span>${esc(i.engineerName)}</span>`:''}<br>
+        Loaded from <span>${esc(i.fileName||'file')}</span>
+      </div>` : `
+      <div class="slot-meta">${esc(i.detail)}</div>`;
+    return `
+    <div class="slot lvl-${i.level}">
+      <div class="slot-top">
+        <span class="code">${esc(i.meta.name).toUpperCase()}</span>
+        <span class="pill ${i.level}">${esc(i.headline)}</span>
+      </div>
+      <h4>${esc(i.meta.full)}</h4>
+      <div class="used">Used by ${esc(i.meta.used)}</div>
+      <div class="countdown">
+        <div class="num">${esc(String(big))}${bigUnit}</div>
+        <div class="track"><i style="width:${pct}%"></i></div>
+      </div>
+      ${details}
+      <div class="slot-actions">
+        <button class="sbtn" type="button" data-load="${i.device}">${i.loaded?'Replace file':'Load '+esc(i.meta.name)+' file'}</button>
+        ${i.loaded?`<button class="sbtn ghost" type="button" data-clear="${i.device}">Remove</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+
+  // Listeners only need re-attaching when the markup was actually replaced.
+  if(setHtml(vaultEl, html)){
+  vaultEl.querySelectorAll('[data-load]').forEach(b=>b.addEventListener('click',()=>{
+    pendingDevice = b.getAttribute('data-load');
+    vaultFileEl.click();
+  }));
+  vaultEl.querySelectorAll('[data-clear]').forEach(b=>b.addEventListener('click',()=>{
+    const d = b.getAttribute('data-clear');
+    const name = LabCalOffsets.DEVICES[d] ? LabCalOffsets.DEVICES[d].name : d;
+    if(confirm(`Remove the ${name} offsets?\n\nEvery worksheet that uses them will be locked until you load a file again.`)){
+      LabCalOffsets.remove(d);
+    }
+  }));
+  }
+
+  renderVaultWarning(infos);
+  renderCards();
+  renderStatusStrip();
+}
+
+function renderVaultWarning(infos){
+  if(!vaultWarnEl) return;
+  const expired  = infos.filter(i=>i.loaded && i.expired);
+  const critical = infos.filter(i=>i.loaded && i.level==='critical');
+  const soon     = infos.filter(i=>i.loaded && i.level==='soon');
+  const missing  = infos.filter(i=>!i.loaded);
+
+  vaultWarnEl.className = 'vaultwarn';
+  let cls = '', html = '';
+
+  if(expired.length){
+    cls = 'show critical';
+    html = `<b>⚠ ${expired.map(i=>i.meta.name).join(' and ')} certificate expired</b>`
+      + expired.map(i=>`${i.meta.name}: ran out at the end of ${i.validLabel} (${Math.abs(i.daysLeft)} days ago). No certificate can be generated from ${i.meta.used}.`).join('<br>');
+  }else if(critical.length){
+    cls = 'show critical';
+    html = `<b>⚠ Reference thermometer recalibration due</b>`
+      + critical.map(i=>`${i.meta.name}: <b style="display:inline">${i.daysLeft} day${i.daysLeft===1?'':'s'}</b> left — certificate ends with ${i.validLabel}. Book it now to avoid losing the ${i.meta.used} worksheets.`).join('<br>');
+  }else if(soon.length){
+    // v1.552: "coming up" (more than 14 days left) is shown by the amber chip
+    // in the status strip only; the big box is kept for critical / expired /
+    // missing, which need action now.
+    cls = 'soft';
+    html = `<b>Recalibration coming up</b>`
+      + soon.map(i=>`${i.meta.name}: ${i.daysLeft} days left, certificate ends with ${i.validLabel}.`).join('<br>');
+  }else if(missing.length === infos.length){
+    cls = 'show info';
+    html = `<b>Load your offsets to start</b>Load each Offset Manager JSON file once here. Every worksheet then picks it up automatically until the certificate expires — no more loading offsets on every form.`;
+  }else if(missing.length){
+    cls = 'show info';
+    html = `<b>${missing.map(i=>i.meta.name).join(' and ')} not loaded</b>The ${missing.map(i=>i.meta.used).join(' and ')} worksheets stay locked until that file is loaded.`;
+  }
+
+  vaultWarnEl.className = 'vaultwarn ' + cls;
+  setHtml(vaultWarnEl, html);
+}
+
+if(vaultFileEl){
+  vaultFileEl.addEventListener('change', async (ev)=>{
+    const file = ev.target.files && ev.target.files[0];
+    ev.target.value = '';
+    if(!file || !window.LabCalOffsets) return;
+    const res = await LabCalOffsets.ingestFile(file, pendingDevice);
+    pendingDevice = null;
+    if(!res.ok){ alert('Could not load that offsets file.\n\n' + res.error); return; }
+    if(res.warning) alert(res.warning);
+    renderVault();
+  });
+}
+
+if(window.LabCalOffsets){
+  LabCalOffsets.onChange(renderVault);
+  // Day counters go stale if the tab is left open — recheck on return.
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) renderVault(); });
+}
+
+// ---------------------------------------------------------------------
+// Offline install — registers the service worker and lets the engineer
+// explicitly pre-cache every worksheet + its libraries (pdf.js, xlsx,
+// html2pdf, fonts…) so the whole suite works with zero signal.
+// Keep this URL list in sync with APP_SHELL / CDN_ASSETS in sw.js.
+// ---------------------------------------------------------------------
+// Every same-origin page that must work with no signal. This is the single
+// authoritative list for the whole suite — keep it in sync with APP_SHELL in
+// sw.js whenever a page is added. Sub-pages (cloud_temp, the worksheets) are
+// listed explicitly because they sit below the section pages.
+const OFFLINE_PAGES = [
+  // shared modules
+  'labcal_offsets.js',
+  'labcal_jobsheet.js',
+  'labcal_testmode.js',
+  'labcal_save.js',
+  'labcal_certs.js',
+  'labcal_guard.js',
+  'labcal_jobpack.js',
+  'labcal_units.js',
+  'labcal_tablock.js',   // v1.562
+  'labcal_nav.js',       // v1.563
+  'labcal_timing.js',    // v1.562: was missing from this check (already cached by sw.js)
+  'labcal_backup.js',
+  'labcal_pdf.js',
+  'labcal_vector_pdf.js',
+  'labcal_font_dancing.js',
+  'pdf-lib.min.js',
+  // section pages
+  'calibration.html',
+  'tools.html',
+  // calibration worksheets
+  'barkey_calibration_form.html',
+  'calibration_worksheet_SMD.html',
+  'calibration_worksheet_NSMD.html',
+  'calibration_worksheet_IBB.html',
+  'calibration_worksheet_SNMD.html',
+  'calibration_worksheet_19_24.html',
+  'monitoring_systems.html',
+  'cloud_temp.html',
+  // tools & utilities
+  'data_logger_viewer.html',
+  // ~1.9 MB — pdf-lib and pdf.js are inlined, so this one page is most of the
+  // offline download. It has no other dependencies at all once cached.
+  'pdf_merge_reorder.html'
+];
+// Libraries the worksheets genuinely can't work without offline. Served from
+// this site since v1.542 (were cdnjs / jsdelivr) — see lib/README.txt.
+const OFFLINE_CDN = [
+  'lib/jspdf.umd.min.js',
+  'lib/html2pdf.bundle.min.js',
+  'lib/html2pdf.min.js',
+  'lib/xlsx.full.min.js',
+  'lib/pdf.min.js',
+  'lib/pdf.worker.min.js',
+  'lib/html2canvas-pro.min.js',
+];
+// Nice-to-have only — the cursive signature font. If this can't be fetched the
+// suite still works perfectly (the signature just falls back to a normal face),
+// so it must never block the "ready to work offline" status.
+const OFFLINE_OPTIONAL = [
+  'lib/dancing-script.css',
+  'lib/dancing-script-latin-600-normal.woff2',
+];
+
+const box = document.getElementById('offlinebox');
+const title = document.getElementById('offlineTitle');
+const sub = document.getElementById('offlineSub');
+const btn = document.getElementById('dlBtn');
+const btnLabel = document.getElementById('dlBtnLabel');
+
+function setBoxState(state, msg){
+  box.classList.remove('ready','error');
+  if(state) box.classList.add(state);
+  title.innerHTML = `<span class="statusdot"></span>${msg}`;
+  // v1.552: mirrored in the status strip at the top of the page.
+  offlineState = { state: state || 'missing', checked: true };
+  renderStatusStrip();
+}
+
+// ---------------------------------------------------------------------
+// v1.553 updates. The suite now always opens from the copy on this iPad
+// (see sw.js), so a weak signal never holds a page up. A new version is
+// downloaded in the background — completely, or not at all — and then waits
+// here until the engineer taps "Update now". Nothing switches version while
+// a worksheet is open.
+// ---------------------------------------------------------------------
+let labcalUpdating = false;
+function showUpdateBanner(worker){
+  const el = document.getElementById('updateBanner');
+  if(!el || !worker) return;
+  el.className = 'updatebanner show';
+  el.innerHTML = `<div><b>New LabCal version downloaded</b><span>It is ready on this iPad. Finish or save any open worksheet, then update — takes a second, no signal needed.</span></div><button type="button" class="dlbtn" id="updateNowBtn">Update now</button>`;
+  document.getElementById('updateNowBtn').addEventListener('click', ()=>{
+    labcalUpdating = true;
+    el.querySelector('button').disabled = true;
+    el.querySelector('button').textContent = 'Updating…';
+    worker.postMessage({ type:'SKIP_WAITING' });
+    // Safety net: if the switch-over event never arrives, reload anyway.
+    setTimeout(()=>location.reload(), 4000);
+  });
+}
+function watchForUpdate(reg){
+  if(!reg) return;
+  const check = ()=>{ if(reg.waiting && navigator.serviceWorker.controller) showUpdateBanner(reg.waiting); };
+  check();
+  reg.addEventListener('updatefound', ()=>{
+    const nw = reg.installing;
+    if(nw) nw.addEventListener('statechange', ()=>{ if(nw.state === 'installed') check(); });
+  });
+  navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+    if(labcalUpdating){ labcalUpdating = false; location.reload(); }
+  });
+}
+
+async function registerSW(){
+  if(!('serviceWorker' in navigator)){
+    setBoxState('error', 'Offline mode not supported in this browser');
+    sub.textContent = 'On iPad, open this page in Safari (not an in-app browser) to enable offline use.';
+    btn.style.display = 'none';
+    return null;
+  }
+  try{
+    const reg = await navigator.serviceWorker.register('./sw.js');
+    watchForUpdate(reg);
+    await navigator.serviceWorker.ready;
+    // On a first visit the worker activates but isn't controlling this page
+    // yet. Wait briefly for it to claim us so the Download button can hand
+    // the work to it rather than falling back to plain fetches.
+    if(!navigator.serviceWorker.controller){
+      await new Promise(resolve=>{
+        const done = ()=>{ navigator.serviceWorker.removeEventListener('controllerchange', done); resolve(); };
+        navigator.serviceWorker.addEventListener('controllerchange', done);
+        setTimeout(done, 3000);
+      });
+    }
+    return reg;
+  }catch(e){
+    setBoxState('error', 'Could not set up offline mode');
+    sub.textContent = 'Make sure this site is served over HTTPS — service workers require a secure connection.';
+    btn.style.display = 'none';
+    return null;
+  }
+}
+
+async function checkCacheStatus(){
+  if(!('caches' in window)) return false;
+  try{
+    // caches.match() searches EVERY cache. The old version only looked inside
+    // labcal-static-*, so anything the service worker had stored in its runtime
+    // cache counted as missing and a perfectly good download reported failure.
+    const required = ['./index.html', ...OFFLINE_PAGES, ...OFFLINE_CDN];
+    const has = await Promise.all(required.map(u => caches.match(u)));
+    return has.every(Boolean);
+  }catch(e){ return false; }
+}
+
+async function refreshStatus(){
+  const ok = await checkCacheStatus();
+  if(ok){
+    setBoxState('ready', 'Ready to work offline');
+    sub.textContent = 'Every worksheet is stored on this device. Re-download any time after editing a worksheet to refresh the offline copy.';
+    btnLabel.textContent = 'Refresh offline copy';
+  }else{
+    setBoxState(null, 'Not yet available offline');
+    sub.textContent = 'This installs every worksheet and its libraries so the suite keeps working with no signal — ideal for iPad in the lab.';
+    btnLabel.textContent = 'Download for offline use';
+  }
+  return ok;
+}
+
+// Ask the service worker to do the caching. It owns the app-shell cache, so
+// this guarantees files land where the status check looks for them, and it
+// can report exactly which URLs (if any) failed.
+function precacheViaServiceWorker(onProgress){
+  return new Promise((resolve)=>{
+    const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
+    if(!sw){ resolve(null); return; }
+    const channel = new MessageChannel();
+    const timeout = setTimeout(()=>resolve(null), 180000);
+    channel.port1.onmessage = (ev)=>{
+      const d = ev.data || {};
+      if(d.type === 'PROGRESS'){ onProgress(d.done, d.total); }
+      else if(d.type === 'DONE'){ clearTimeout(timeout); resolve(d); }
+    };
+    sw.postMessage({ type:'PRECACHE_ALL' }, [channel.port2]);
+  });
+}
+
+async function downloadForOffline(){
+  btn.disabled = true;
+  setBoxState(null, 'Downloading offline copy…');
+  sub.textContent = 'Keep this tab open and stay on Wi-Fi until this finishes.';
+  btnLabel.textContent = 'Downloading…';
+
+  // v1.553: also look for a newer version on the site. If there is one it
+  // downloads in the background and the "Update now" banner appears.
+  try{ const r = navigator.serviceWorker && await navigator.serviceWorker.getRegistration(); if(r) r.update().catch(()=>{}); }catch(e){}
+
+  let result = await precacheViaServiceWorker((done,total)=>{
+    btnLabel.textContent = `Downloading… ${done}/${total}`;
+  });
+
+  // Fallback if the service worker isn't controlling this page yet (e.g. very
+  // first visit before it activates): fetch through it so it still caches.
+  if(!result){
+    const urls = ['./index.html', ...OFFLINE_PAGES, ...OFFLINE_CDN];
+    let done = 0;
+    for(const url of urls){
+      try{ await fetch(url, {cache:'reload', mode: url.startsWith('http') ? 'no-cors' : 'same-origin'}); }catch(e){}
+      done++; btnLabel.textContent = `Downloading… ${done}/${urls.length}`;
+    }
+  }
+
+  const ok = await refreshStatus();
+  btn.disabled = false;
+
+  const allFailed = (result && result.failed) || [];
+  const short = u => u.split('/').pop().split('?')[0];
+  // font is cosmetic; compare by file name — the service worker reports
+  // './lib/x' where this page lists 'lib/x'
+  const failed = allFailed.filter(u => !OFFLINE_OPTIONAL.some(o => short(o) === short(u)));
+  const unverified = (result && result.unverified) || [];
+
+  if(!ok || failed.length){
+    setBoxState('error', 'Some files failed to download');
+    sub.textContent = 'Check your connection and try again — partial downloads still help, but some worksheets may need a network connection until this succeeds.'
+      + (failed.length ? ' Could not fetch: ' + failed.map(short).join(', ') + '.' : '');
+  }else if(unverified.length){
+    // Cached, but the browser wouldn't let us confirm the contents are real
+    // (rather than an error page from a captive portal / restricted network).
+    setBoxState('ready', 'Ready to work offline');
+    sub.textContent = 'Every worksheet is stored on this device. Note: ' + unverified.length
+      + ' library file(s) could not be fully verified on this network — if PDF or Excel export misbehaves offline, re-download once on a normal Wi-Fi connection.';
+  }
+}
+
+btn.addEventListener('click', downloadForOffline);
+
+(async ()=>{
+  await registerSW();
+  await refreshStatus();
+})();
+
+
+// ---------------------------------------------------------------------
+// Backup & restore. Everything the suite remembers lives in browser
+// storage, which iPadOS clears after about a week away from the site —
+// this is the only thing that makes that survivable.
+// ---------------------------------------------------------------------
+const backupPanel = document.getElementById('backupPanel');
+const restoreFileEl = document.getElementById('restoreFile');
+let lastRestoreReport = '';
+
+function fmtBytes(n){
+  if(n < 1024) return n + ' B';
+  if(n < 1024*1024) return Math.round(n/1024) + ' KB';
+  return (n/(1024*1024)).toFixed(1) + ' MB';
+}
+
+function renderBackupPanel(){
+  if(!backupPanel || !window.LabCalBackup) return;
+  const days = LabCalBackup.daysSinceBackup();
+  const at = LabCalBackup.lastBackupAt();
+
+  let cls = 'backup', whenCls = '', when;
+  if(days === null){
+    cls += ' warn'; whenCls = 'due';
+    when = 'Never backed up on this device.';
+  }else if(days === 0){
+    when = 'Last backup <b>today</b>.';
+  }else if(days <= 3){
+    when = `Last backup <b>${days} day${days===1?'':'s'} ago</b>.`;
+  }else if(days <= 7){
+    cls += ' warn'; whenCls = 'due';
+    when = `Last backup <b>${days} days ago</b> — worth doing again.`;
+  }else{
+    cls += ' stale'; whenCls = 'overdue';
+    when = `Last backup <b>${days} days ago</b>. iPadOS clears browser storage after about a week away from this site.`;
+  }
+  if(at && days !== null){
+    try{ when += ' ' + new Date(at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); }catch(e){}
+  }
+
+  backupPanel.className = cls;
+  setHtml(backupPanel, `
+    <div class="backup-head">
+      <div>
+        <h4>Backup &amp; restore</h4>
+        <div class="when ${whenCls}">${when}</div>
+        <div class="when" id="storageHealth"></div>
+      </div>
+      <div class="backup-actions">
+        <button class="sbtn" type="button" id="backupBtn">Back up now</button>
+        <button class="sbtn ghost" type="button" id="restoreBtn">Restore…</button>
+      </div>
+    </div>
+    <p class="why">Saves your offsets, learned routing, jobsheet progress and part-finished worksheets — the things that exist nowhere but this browser. A few tens of KB. Send it to Files or iCloud so it lives off the iPad. Restoring merges; it never deletes anything already here.<br><br><b>Certificates are not in here.</b> They are documents in their own right — save them from the calibration page, where each job merges into one PDF.</p>
+    ${lastRestoreReport ? `<div class="restore-report">${lastRestoreReport}</div>` : ''}`);
+
+  const inc = document.getElementById('incCerts');
+  if(inc) inc.addEventListener('change', ()=>{ includeCerts = inc.checked; });
+
+  const b = document.getElementById('backupBtn');
+  if(b) b.addEventListener('click', async ()=>{
+    const label = b.textContent;
+    b.disabled = true; b.textContent = 'Packing…';
+    try{
+      const pack = await LabCalBackup.build({ appVersion: 'v1.20' });
+      const blob = LabCalBackup.toBlob(pack);
+      const name = LabCalBackup.fileName();
+      b.textContent = label; b.disabled = false;
+      // A backup that a file previewer cannot open is worse than useless.
+      if(blob.size > LabCalBackup.SIZE_WARN_BYTES){
+        if(!confirm(`This backup is ${fmtBytes(blob.size)}, which is larger than expected.\n\nVery large files can hang the Files app when it tries to preview them. Save it anyway?`)) return;
+      }
+      if(window.LabCalSave) await LabCalSave.deliver(blob, name);
+      LabCalBackup.markBackedUp();
+      lastRestoreReport = `Backup ready — <b>${fmtBytes(blob.size)}</b>, covering ${pack.certificates.length} certificate record${pack.certificates.length===1?'':'s'}. Save it somewhere off this iPad.`;
+      renderBackupPanel();
+      if(typeof renderSettingsHint === 'function') renderSettingsHint();
+
+// ---------------------------------------------------------------------
+// Certificate PDF size. The worksheets are captured as an image, so scale
+// and JPEG quality decide the file size — see labcal_pdf.js.
+// ---------------------------------------------------------------------
+
+
+    }catch(e){
+      alert('Could not build the backup.\n\n' + (e && e.message ? e.message : e));
+    }finally{
+      b.disabled = false; b.textContent = label;
+    }
+  });
+
+  const r = document.getElementById('restoreBtn');
+  if(r) r.addEventListener('click', ()=>restoreFileEl.click());
+  renderStorageHealth();
+}
+
+// v1.546 — Home Screen help.
+// In a browser tab (Chrome or Safari) on an iPad/iPhone: explain how to put
+// LabCal on the Home Screen and move the data across with a backup, since
+// the Home Screen app has its own, separate storage that iPadOS does not
+// clear after a week away. Opened FROM the Home Screen with nothing stored
+// yet: offer to restore the backup straight away.
+const HOMEHINT_KEY = 'labcal.ui.homeHintHiddenUntil';
+function isAppleTouchDevice(){
+  const ua = navigator.userAgent || '';
+  return /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && (navigator.maxTouchPoints||0) > 1);
+}
+function hasLocalLabCalData(){
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const k = localStorage.key(i) || '';
+      if(/^labcal\.(offsets\.|jobsheet\.(current|jobs|progress)|unit\.)/.test(k)) return true;
+    }
+  }catch(e){}
+  return false;
+}
+function renderHomeHint(){
+  const el = document.getElementById('homeHint');
+  if(!el || !window.LabCalBackup || !LabCalBackup.isHomeScreenApp) return;
+  let hiddenUntil = 0;
+  try{ hiddenUntil = Number(localStorage.getItem(HOMEHINT_KEY)) || 0; }catch(e){}
+  const standalone = LabCalBackup.isHomeScreenApp();
+  let html = '';
+  if(standalone){
+    if(hasLocalLabCalData()){ el.className = 'homehint'; return; }
+    el.className = 'homehint restore show';
+    html = `
+      <h4>LabCal on the Home Screen — bring your data across</h4>
+      <p>This icon has its <b>own storage</b>, separate from the browser, so it starts empty. Restore the backup you made in the browser to bring back your offsets, job list and part-finished worksheets.</p>
+      <div class="hh-actions">
+        <button class="sbtn" type="button" id="hhRestore">Restore backup…</button>
+        <button class="sbtn ghost" type="button" id="hhSkip">Start fresh</button>
+      </div>`;
+  }else{
+    if(!isAppleTouchDevice() || Date.now() < hiddenUntil){ el.className = 'homehint'; return; }
+    el.className = 'homehint show';
+    const share = '<svg class="hh-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 8 5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
+    html = `
+      <h4>Put LabCal on the Home Screen</h4>
+      <p>You are using LabCal in a browser tab. iPadOS can wipe everything stored here — offsets, jobs, part-finished worksheets, unsaved certificates — after about a week away from the site, or when browsing data is cleared. Opened from its own Home Screen icon, LabCal keeps its data and runs full-screen.</p>
+      <ol>
+        <li>Save out any certificates marked <b>not saved yet</b> (Calibration page) — certificate PDFs are not carried by the backup.</li>
+        <li>Tap <b>Back up now</b> below and save the file to Files / iCloud.</li>
+        <li>Tap the Share button ${share} in the address bar, then <b>Add to Home Screen</b> → <b>Add</b>.</li>
+        <li>Open LabCal from the new icon and tap <b>Restore backup…</b> — it will offer this straight away.</li>
+        <li>From then on use <b>only the icon</b>. The browser tab and the icon keep separate data.</li>
+      </ol>
+      <div class="hh-actions">
+        <button class="sbtn" type="button" id="hhBackup">Back up now</button>
+        <button class="sbtn ghost" type="button" id="hhLater">Remind me in 2 weeks</button>
+      </div>`;
+  }
+  if(!setHtml(el, html)) return;
+  const b = document.getElementById('hhBackup');
+  if(b) b.addEventListener('click', ()=>{ const real = document.getElementById('backupBtn'); if(real) real.click(); });
+  const later = document.getElementById('hhLater');
+  if(later) later.addEventListener('click', ()=>{
+    try{ localStorage.setItem(HOMEHINT_KEY, String(Date.now() + 14*86400000)); }catch(e){}
+    el.className = 'homehint';
+  });
+  const rs = document.getElementById('hhRestore');
+  if(rs) rs.addEventListener('click', ()=>{ if(restoreFileEl) restoreFileEl.click(); });
+  const sk = document.getElementById('hhSkip');
+  if(sk) sk.addEventListener('click', ()=>{ el.className = 'homehint'; });
+}
+
+// v1.541 — is this iPad protecting LabCal's data, and how full is it?
+// Filled in after the panel draws, because the browser answers asynchronously.
+async function renderStorageHealth(){
+  const el = document.getElementById('storageHealth');
+  if(!el || !window.LabCalBackup || !LabCalBackup.storageStatus) return;
+  let st;
+  try{ st = await LabCalBackup.storageStatus(); }catch(e){ return; }
+  const parts = [];
+  if(st.persisted === true){
+    parts.push('Storage: <b>protected</b> — the iPad will not clear it automatically.');
+  }else if(st.homeScreen){
+    parts.push('Storage: running from the Home Screen icon — not cleared after a week away.');
+  }else{
+    parts.push('<span style="color:#a9690a">Storage: <b>not protected</b> — running in a browser tab, so iPadOS can clear everything after ~7 days away. Back up regularly.</span>');
+  }
+  const pct = Math.round(100 * st.localChars / st.localLimitChars);
+  const localTxt = `Worksheet data: ${fmtBytes(st.localChars)} of about 5 MB (${pct}%)`;
+  parts.push(pct >= 70
+    ? `<span style="color:#c0392b;font-weight:600">${localTxt} — nearly full. Back up, then clear old jobs.</span>`
+    : localTxt);
+  if(st.usage != null) parts.push(`Everything incl. certificates &amp; offline files: ${fmtBytes(st.usage)}`);
+  setHtml(el, parts.join('<br>'));
+}
+
+if(restoreFileEl){
+  restoreFileEl.addEventListener('change', async (ev)=>{
+    const file = ev.target.files && ev.target.files[0];
+    ev.target.value = '';
+    if(!file) return;
+    let pack, info;
+    try{
+      pack = JSON.parse(await file.text());
+      info = LabCalBackup.inspect(pack);
+    }catch(e){
+      alert('That file cannot be restored.\n\n' + (e && e.message ? e.message : e));
+      return;
+    }
+    // Say exactly what is in the file before touching anything.
+    const lines = [
+      `Backup from ${info.exportedAt ? new Date(info.exportedAt).toLocaleString('en-GB') : 'unknown date'}`,
+      '',
+      info.offsets.length ? 'Offsets: ' + info.offsets.map(o=>`${o.device} (valid to ${o.validUntil||'?'})`).join(', ') : 'Offsets: none',
+      `Learned routing: ${info.routes} model${info.routes===1?'':'s'}`,
+      info.jobsheet ? `Worklist: ${info.jobsheet.callNumber||'(no job ref)'} — ${info.jobsheet.devices} unit(s)` : 'Worklist: none',
+      `Job progress records: ${info.progressJobs}`,
+      `Jobs on the list: ${info.jobs||0}`,
+      `Part-finished worksheets: ${info.units}`,
+      `Certificates: ${info.certificates}${info.certificatesWithPdf?` (${info.certificatesWithPdf} with the PDF)`:' (details only)'}`,
+      '',
+      'Restoring MERGES into what is already on this device. Nothing here is deleted.',
+      '',
+      'Go ahead?'
+    ];
+    if(!confirm(lines.join('\n'))) return;
+    try{
+      const rep = await LabCalBackup.restore(pack);
+      lastRestoreReport = `Restored — offsets <b>${rep.offsets}</b>, routes <b>${rep.routes}</b>, progress <b>${rep.progress}</b>, jobs <b>${rep.jobs||0}</b>, worksheets <b>${rep.units}</b>, certificates <b>${rep.certificates}</b>. Skipped <b>${rep.skipped}</b> already present or newer here.`;
+      renderVault();
+      renderBackupPanel();
+      // v1.546: a restore started from the Home Screen help card reports
+      // there, where the engineer is looking (the backup panel sits in the
+      // closed Settings drawer).
+      const hh = document.getElementById('homeHint');
+      if(hh && hh.classList.contains('show')){
+        hh.className = 'homehint show';
+        setHtml(hh, `<h4>Backup restored</h4><p>${lastRestoreReport}</p><p>From now on open LabCal only from this Home Screen icon.</p>`);
+      }
+
+// ---------------------------------------------------------------------
+// Certificate PDF size. The worksheets are captured as an image, so scale
+// and JPEG quality decide the file size — see labcal_pdf.js.
+// ---------------------------------------------------------------------
+
+
+    }catch(e){
+      alert('The restore did not finish.\n\n' + (e && e.message ? e.message : e));
+    }
+  });
+}
+
+renderBackupPanel();
+renderHomeHint();
+// v1.541: ask the browser to keep this site's data (offsets, jobs,
+// part-finished worksheets, the day's certificates). Silent on iPad; the
+// panel then shows whether it was granted.
+if(window.LabCalBackup && LabCalBackup.requestPersist){
+  LabCalBackup.requestPersist().then(()=>renderStorageHealth()).catch(()=>{});
+}
+
+// ---------------------------------------------------------------------
+// Certificate PDF size. The worksheets are captured as an image, so scale
+// and JPEG quality decide the file size — see labcal_pdf.js.
+// ---------------------------------------------------------------------
+
+
+
+// ---------------------------------------------------------------------
+// Certificate PDF: how it is drawn, and how big it comes out.
+// ---------------------------------------------------------------------
+function renderPdfQuality(){
+  const el = document.getElementById('pdfQualityPanel');
+  if(!el || !window.LabCalPdf) return;
+  const cur = LabCalPdf.current();
+  const isText = !!(LabCalPdf.style && LabCalPdf.style() === 'text');
+  const opts = Object.keys(LabCalPdf.PRESETS).map(k=>{
+    const p = LabCalPdf.PRESETS[k];
+    return `<option value="${p.id}"${p.id===cur.id?' selected':''}>${p.name}</option>`;
+  }).join('');
+  const note = isText
+    ? 'Real text: small files, selectable, searchable and sharp at any zoom. Used by <b>every certificate</b> — Barkey, Standard Medical, Non-Standard Medical, IBB, Standard Non-Medical, 19/24 Range and Monitoring (Cloud Temp).'
+    : `${cur.note} Each certificate's actual size is shown in the day panel on the calibration page.`;
+  setHtml(el, `
+    <div>
+      <h4>Certificate PDF</h4>
+      <div class="note">${note}</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <select id="pdfStyleSel">
+        <option value="text"${isText?' selected':''}>Text — recommended</option>
+        <option value="image"${isText?'':' selected'}>Image — the older style</option>
+      </select>
+      ${isText ? '' : `<select id="pdfQualitySel">${opts}</select>`}
+    </div>`);
+  const styleSel = document.getElementById('pdfStyleSel');
+  if(styleSel) styleSel.addEventListener('change', ()=>{
+    LabCalPdf.setStyle(styleSel.value);
+    renderPdfQuality();
+    if(typeof renderSettingsHint === 'function') renderSettingsHint();
+  });
+  const qSel = document.getElementById('pdfQualitySel');
+  if(qSel) qSel.addEventListener('change', ()=>{
+    LabCalPdf.setPreset(qSel.value);
+    renderPdfQuality();
+  });
+}
+
+// ---------------------------------------------------------------------
+// Module self-check. Each shared module degrades gracefully on its own,
+// which is right — but it also means a file that never got uploaded fails
+// silently. Say so plainly instead.
+// ---------------------------------------------------------------------
+const APP_VERSION = 'v1.568';
+function runSelfCheck(){
+  const el = document.getElementById('selfCheck');
+  if(!el) return;
+  const expected = [
+    ['labcal_offsets.js',      'LabCalOffsets',     'probe offsets are remembered'],
+    ['labcal_jobsheet.js',     'LabCalJobsheet',    'jobsheet worklist and routing'],
+    ['labcal_save.js',         'LabCalSave',        'saving via the iPad share sheet'],
+    ['labcal_certs.js',        'LabCalCerts',       "the day's certificate list"],
+    ['labcal_units.js',        'LabCalUnits',       'reopening a unit to amend it'],
+    ['labcal_backup.js',       'LabCalBackup',      'backup and restore'],
+    ['labcal_pdf.js',          'LabCalPdf',         'certificate size and style settings']
+  ];
+  const missing = expected.filter(([,g])=>!window[g]);
+  if(!missing.length){ el.className='selfcheck'; return; }
+  el.className='selfcheck show';
+  el.innerHTML = `<b>⚠ ${missing.length} file${missing.length===1?'':'s'} did not load</b>`
+    + `Upload ${missing.length===1?'it':'them'} to the same folder as the pages, then open this page online and tap "Refresh offline copy".`
+    + '<ul style="margin:8px 0 0;padding-left:20px">'
+    + missing.map(([file,,what])=>`<li><code>${file}</code> — without it, ${what} will not work.</li>`).join('')
+    + '</ul>'
+    + `<div class="ver">Suite ${APP_VERSION}. If the footer still shows an older version, the browser is serving a cached copy — tap "Refresh offline copy" and close every tab of this site.</div>`;
+}
+
+// ---------------------------------------------------------------------
+// v1.552 status strip — offline copy, each offsets file and the backup age
+// on one line at the top. Green = fine, amber = coming up, red = needs doing
+// now. Tapping a chip opens Settings at that panel. Anything red opens the
+// drawer by itself (not remembered), so a problem is never folded away.
+// ---------------------------------------------------------------------
+// var, not let: setBoxState()/renderSettingsHint() can run before this line.
+var offlineState = offlineState || { state: null, checked: false };
+var stripAutoOpened = false;
+var settingsReady = false;   // set once initSettings has applied the saved open/closed state
+function stripChip(level, label, value, target){
+  return `<button type="button" class="schip ${level}" data-target="${target}"><span class="sdot"></span><span class="slabel">${esc(label)}</span><span class="svalue">${value}</span></button>`;
+}
+function renderStatusStrip(){
+  const el = document.getElementById('statusStrip');
+  if(!el) return;
+  if(!offlineState) offlineState = { state: null, checked: false };
+  const chips = [];
+  let needsAttention = false;
+
+  // Offline copy
+  if(!offlineState.checked) chips.push(stripChip('idle', 'Offline', 'checking…', 'grpOffline'));
+  else if(offlineState.state === 'ready') chips.push(stripChip('ok', 'Offline', 'ready', 'grpOffline'));
+  else if(offlineState.state === 'error'){ chips.push(stripChip('bad', 'Offline', 'not supported', 'grpOffline')); }
+  else { chips.push(stripChip('warn', 'Offline', 'not downloaded — tap', 'grpOffline')); }
+
+  // Offsets files
+  if(window.LabCalOffsets){
+    LabCalOffsets.all().forEach(i=>{
+      const name = i.meta.name;
+      if(!i.loaded){ chips.push(stripChip('bad', name, 'not loaded', 'grpOffsets')); needsAttention = true; }
+      else if(i.expired){ chips.push(stripChip('bad', name, 'EXPIRED', 'grpOffsets')); needsAttention = true; }
+      else if(i.level === 'critical'){ chips.push(stripChip('bad', name, `<b>${i.daysLeft}</b> day${i.daysLeft===1?'':'s'}`, 'grpOffsets')); needsAttention = true; }
+      else if(i.level === 'soon') chips.push(stripChip('warn', name, `<b>${i.daysLeft}</b> days`, 'grpOffsets'));
+      else chips.push(stripChip('ok', name, `to ${esc(i.validLabel)}`, 'grpOffsets'));
+    });
+  }
+
+  // Backup
+  if(window.LabCalBackup){
+    const days = LabCalBackup.daysSinceBackup();
+    if(days === null){ chips.push(stripChip('bad', 'Backup', 'never', 'grpBackup')); needsAttention = true; }
+    else if(days === 0) chips.push(stripChip('ok', 'Backup', 'today', 'grpBackup'));
+    else if(days <= 3) chips.push(stripChip('ok', 'Backup', `${days} day${days===1?'':'s'} ago`, 'grpBackup'));
+    else if(days <= 7) chips.push(stripChip('warn', 'Backup', `${days} days ago`, 'grpBackup'));
+    else { chips.push(stripChip('bad', 'Backup', `${days} days ago`, 'grpBackup')); needsAttention = true; }
+  }
+
+  if(setHtml(el, chips.join(''))){
+    el.querySelectorAll('[data-target]').forEach(b=>b.addEventListener('click', ()=>{
+      setSettingsOpen(true, false);
+      const t = document.getElementById(b.getAttribute('data-target'));
+      if(t) t.scrollIntoView({behavior:'smooth', block:'start'});
+    }));
+  }
+
+  // v1.554: no automatic opening any more — red chips stay visible instead.
+}
+
+renderPdfQuality();
+runSelfCheck();
+
+// ---------------------------------------------------------------------
+// Settings drawer. The PDF and backup panels are things you set once and
+// leave alone, so they fold away — but the backup age still shows on the
+// button line, because that is the one setting that goes stale silently.
+// ---------------------------------------------------------------------
+const SETTINGS_KEY = 'labcal.ui.settingsOpen';
+function renderSettingsHint(){
+  const hint = document.getElementById('settingsHint');
+  if(!hint || !window.LabCalBackup) return;
+  const days = LabCalBackup.daysSinceBackup();
+  let cls = '', text;
+  if(days === null){ cls = 'due'; text = 'Never backed up on this device'; }
+  else if(days === 0) text = 'Backed up <b>today</b>';
+  else if(days <= 3) text = `Backed up <b>${days} day${days===1?'':'s'} ago</b>`;
+  else if(days <= 7){ cls = 'due'; text = `Backed up <b>${days} days ago</b>`; }
+  else { cls = 'overdue'; text = `Backed up <b>${days} days ago</b> — browser storage clears after about a week`; }
+  const style = (window.LabCalPdf && LabCalPdf.style && LabCalPdf.style() === 'text') ? 'text' : 'image';
+  renderStatusStrip();
+  hint.className = 'hint ' + cls;
+  hint.innerHTML = `${text} &nbsp;·&nbsp; certificates: <b>${style === 'text' ? 'text' : 'image'}</b>`;
+}
+
+function setSettingsOpen(open, persist=true){
+  const drawer = document.getElementById('settingsDrawer');
+  const btn = document.getElementById('settingsToggle');
+  if(!drawer || !btn) return;
+  drawer.classList.toggle('open', open);
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  // v1.552: an automatic open (something needs attention) is not saved, so
+  // the drawer folds away again on the next visit once it is sorted.
+  // v1.554: open/closed is no longer remembered (always folded on load).
+  try{ localStorage.removeItem(SETTINGS_KEY); }catch(e){}
+}
+
+(function initSettings(){
+  const btn = document.getElementById('settingsToggle');
+  if(!btn) return;
+  btn.addEventListener('click', ()=>{
+    const drawer = document.getElementById('settingsDrawer');
+    setSettingsOpen(!drawer.classList.contains('open'));
+  });
+  // v1.554 (Radek): Settings ALWAYS start folded on every page load — the
+  // home screen stays clean. Anything that needs doing still shows as a red
+  // / amber chip in the status strip (and the red warning box for offsets);
+  // tapping the chip or "Settings" opens the drawer. Not remembered.
+  setSettingsOpen(false);
+  settingsReady = true;
+  renderSettingsHint();   // also redraws the status strip
+})();
+
+renderVault();
+renderCards();
+renderDate();
+setupFullscreen();
+</script>
+
+</body>
+</html>
