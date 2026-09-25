@@ -1,0 +1,2080 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LabCal MSW">
+<meta name="theme-color" content="#dfe6ee">
+<title>Monitoring System Calibration Worksheet</title>
+<script src="labcal_offsets.js"></script>
+<script src="labcal_tablock.js"></script>
+<script src="labcal_nav.js"></script>
+<script src="labcal_jobsheet.js"></script>
+<script src="labcal_testmode.js"></script>
+<script src="labcal_save.js"></script>
+<script src="labcal_certs.js"></script>
+<script src="labcal_guard.js"></script>
+<script src="labcal_pdf.js"></script>
+<!-- v1.543: text (vector) certificate, same engine as the other worksheets -->
+<script src="lib/jspdf.umd.min.js"></script>
+<script src="labcal_font_dancing.js"></script>
+<script src="labcal_vector_pdf.js"></script>
+<script src="lib/html2pdf.bundle.min.js"></script>
+<script src="lib/xlsx.full.min.js"></script>
+<script src="lib/pdf.min.js"></script>
+<link href="lib/dancing-script.css" rel="stylesheet">
+<style>
+  :root{--line:#222;--soft:#e8e8e8;--warn:#fff3cd;--bad:#ffd6d6;--ok:#e7f7e7;--ink:#111}
+  body{font-family:Arial, Helvetica, sans-serif;background:#dfe6ee;margin:0;color:var(--ink)}
+  .toolbar{max-width:297mm;margin:10px auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .btn{border:1px solid #111;background:#111;color:#fff;padding:8px 12px;border-radius:4px;font-weight:700;cursor:pointer;font-size:13px}
+  .btn.light{background:#f4f4f4;color:#111}
+  .btn.add{background:#207a20;border-color:#207a20}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .hintText{font-size:11px;color:#555}
+  .page{width:297mm;min-height:210mm;margin:14px auto;background:white;padding:10mm;box-shadow:0 4px 22px #0002;box-sizing:border-box}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+  .title{font-size:19px;font-weight:800;letter-spacing:.5px}
+  .brand{text-align:right}
+  .brand .logo{font-size:26px;font-weight:900;color:#111}
+  .brand .logo .snow{color:#2f6fb0}
+  .brand .sub{font-size:9px;font-weight:600;color:#555;letter-spacing:.5px;margin-top:-2px}
+  .brand .no{font-size:12px;margin-top:4px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px 20px;margin:10px 0;font-size:12.5px}
+  .grid2 .full{grid-column:1/-1}
+  .field{display:grid;grid-template-columns:auto 1fr;gap:6px;align-items:end}
+  .field label{font-size:12px;white-space:nowrap}
+  .field input,.field select{border:0;border-bottom:1px dotted #333;padding:3px 4px;font-size:12.5px;width:100%;box-sizing:border-box;background:transparent}
+  .req{color:#b00000;font-weight:700}
+  table{border-collapse:collapse;width:100%;table-layout:fixed;font-size:11px}
+  td,th{border:1px solid var(--line);padding:3px;vertical-align:middle}
+  tr.pointStart>td{border-top:2.5px solid #1a3a6b}
+  th{background:#ddd;font-weight:700;font-size:10.5px}
+  .input{width:100%;border:0;background:transparent;font-size:11px;box-sizing:border-box;text-align:center}
+  .input:focus{outline:2px solid #9ec5fe;background:#eef6ff}
+  textarea.input{resize:none;font-family:Arial,Helvetica,sans-serif;text-align:left;padding:2px 3px;height:100%;min-height:38px}
+  select.probe{width:100%;height:24px;border:1px solid #333!important;background:#fff!important;color:#111!important;font-size:9.5px;padding:1px}
+  .probeCell{position:relative}
+  .naText{display:none;font-weight:900;letter-spacing:1px;color:#888;text-align:center;font-size:11px}
+  .descCell{padding:3px 4px;vertical-align:top}
+  .descRow{display:flex;gap:3px;margin-bottom:3px}
+  .descRow:last-child{margin-bottom:0}
+  .descSel{font-size:13px;border:1px solid #999;border-radius:3px;padding:4px 3px;background:#fff;color:#111;flex:0 0 42%;min-width:0}
+  .descInput{font-size:13px;border:1px solid #999;border-radius:3px;padding:4px 5px;flex:1;min-width:0}
+  .descInput.full{display:block;width:100%;margin-bottom:3px;box-sizing:border-box}
+  .descInput.full:last-child{margin-bottom:0}
+  .printMode .descSel,.printMode .descInput{font-size:9px;padding:2px 3px}
+  .ptCell .input{font-size:14px;font-weight:700}
+  .printMode .ptCell .input{font-size:11px;font-weight:400}
+  .modeToggle{display:flex;gap:3px;margin-bottom:4px}
+  .modeBtn{flex:1;font-size:8px;font-weight:800;letter-spacing:.3px;padding:2px 3px;border:1px solid #b9c7db;background:#f4f7fb;border-radius:3px;cursor:pointer;color:#5a6b85;text-transform:uppercase}
+  .modeBtn.active{background:#1a3a6b;color:#fff;border-color:#1a3a6b}
+  .ambientLabel{font-size:10.5px;font-weight:700;color:#1a3a6b;background:#eef3fb;border:1px solid #c9d7ea;border-radius:3px;padding:4px 5px;margin-bottom:3px;text-align:center}
+  .autoCorr{background:#fff3cd!important}
+  .spHint{font-size:8.5px;font-weight:700;color:#7a4b00;text-align:center;margin-top:1px;line-height:1.1}
+  .calc{background:#f8f8f8;font-weight:700}
+  .lockedRef{background:#f0f0f0!important;color:#999!important;cursor:not-allowed}
+  tr.notNeeded{position:relative;background:repeating-linear-gradient(135deg,rgba(0,0,0,.035) 0,rgba(0,0,0,.035) 8px,transparent 8px,transparent 16px)}
+  tr.notNeeded td{background:transparent}
+  input.na,select.na{text-decoration:line-through;background:#dcdcdc!important;color:#888!important;cursor:not-allowed}
+  input.na:disabled,select.na:disabled{opacity:1}
+  tr.notNeeded .phaseLabel{font-style:italic;color:#7a4b00;font-size:9.5px}
+  tr.outOfTolerance{background:#ffd6d6!important}
+  tr.outOfTolerance td{background:#ffd6d6!important}
+  tr.outOfTolerance input,tr.outOfTolerance select{background:#ffe0e0!important;color:#900!important;border-color:#b00000!important;font-weight:800}
+  tr.outOfTolerance .phaseLabel{background:#b00000;color:#fff;font-weight:800;font-size:9px}
+  input.invalid,select.invalid{background:#ffdede!important;border-bottom:2px solid #b00020!important;color:#900!important}
+  input.reqMissing,select.reqMissing,textarea.reqMissing{background:#fff3cd!important;border:2px solid #cc7a00!important}
+  input.valid{background:#eef9ee!important}
+  .phaseLabel{font-weight:700;font-size:10px;text-align:center;background:#eef3fa}
+  .ptCell{position:relative}
+  .delBtn{position:absolute;top:1px;right:1px;border:0;background:#b00000;color:#fff;width:15px;height:15px;line-height:14px;border-radius:50%;font-size:10px;font-weight:900;cursor:pointer;padding:0;z-index:2}
+  .delBtn:hover{background:#800000}
+  .addRow td{background:#f4f8f4;text-align:center;padding:6px;border-top:2px solid #207a20}
+  .offsetWarning{max-width:297mm;margin:8px auto 0;background:#ffe3e3;border:1.3px solid #b00000;color:#7a0000;font-size:12px;font-weight:700;padding:8px 12px;border-radius:4px}.offsetWarning.soon{background:#fdf3e3;border-color:#a9690a;color:#7a4c06}
+  .modalOverlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:50}
+  .modalBox{background:#fff;border-radius:8px;max-width:520px;width:92%;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 40px #0006}
+  .modalHeader{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid #e0e0e0;font-weight:800;font-size:15px;color:#1a3a6b}
+  .modalClose{border:0;background:none;font-size:20px;font-weight:900;cursor:pointer;color:#888;line-height:1;padding:2px 6px}
+  .modalClose:hover{color:#b00000}
+  .modalMeta{padding:10px 16px;font-size:12px;color:#555;border-bottom:1px solid #f0f0f0}
+  .modalList{overflow-y:auto;padding:8px 12px}
+  .jobsheetRow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 6px;border-bottom:1px solid #f0f0f0;font-size:13px}
+  .jobsheetRow:last-child{border-bottom:0}
+  .quickAdd{background:#eef3fb;border:1px solid #c9d7ea;border-radius:6px;padding:10px 14px;margin:10px 0}
+  .qaTitle{font-size:12px;font-weight:800;letter-spacing:.4px;color:#1a3a6b;margin-bottom:8px}
+  .pointStats{font-size:11px;font-weight:700;letter-spacing:0;text-transform:none;color:#1a3a6b;background:#dbe6f7;border:1px solid #b6cbe8;border-radius:12px;padding:3px 10px}
+  .qaRow{display:flex;gap:16px;align-items:flex-end;margin-bottom:8px;flex-wrap:wrap}
+  .qaRow:last-child{margin-bottom:0}
+  .qaField{display:flex;flex-direction:column;gap:3px}
+  .qaField label{font-size:11px;color:#555;font-weight:600}
+  .qaField input{border:1px solid #b9c7db;border-radius:3px;padding:6px 8px;font-size:13px;background:#fff}
+  .qaChannels{flex-direction:row;align-items:center;gap:10px;flex:1}
+  .qaChannels>label{margin-right:2px}
+  .qaCheck{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid #b9c7db;border-radius:4px;padding:5px 10px}
+  .qaCheck input{width:16px;height:16px;accent-color:#1a3a6b;cursor:pointer}
+  .qaCheck label{font-size:12.5px;font-weight:600;cursor:pointer;color:#222}
+  .printMode .quickAdd{display:none}
+  .signature{font-family:'Dancing Script',cursive;font-size:20px;color:#1a3a6b;padding:2px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+  .footer{display:grid;grid-template-columns:1.3fr 1fr 0.8fr;gap:10px 24px;margin-top:12px;font-size:12px}
+  .footer .field{grid-template-columns:auto 1fr}
+  .rangeWarn{font-size:10px;color:#b00000;font-weight:700;margin-left:4px}
+  .validityBadge{font-size:11px;font-weight:800;padding:3px 8px;border-radius:3px;white-space:nowrap;margin-left:6px}
+  .validityBadge.ok{background:#e7f7e7;color:#0a7a0a;border:1px solid #a8d8a8}
+  .validityBadge.expired{background:#b00000;color:#fff;border:1px solid #7a0000;animation:pulseExpired 1.4s infinite}
+  .validityBadge.none{background:#f0f0f0;color:#888;border:1px solid #ddd}
+  @keyframes pulseExpired{0%,100%{opacity:1}50%{opacity:.55}}
+  .printMode .validityBadge.expired{animation:none}
+  .printMode .toolbar,.printMode .offsetWarning{display:none}
+  .printMode html,.printMode body{background:white}
+  .printMode .page{box-shadow:none;margin:0 auto;width:287mm;min-height:auto;padding:6mm}
+  .printMode .delBtn,.printMode .addRow,.printMode .modeToggle{display:none}
+  @page{size:A4 landscape;margin:6mm}
+  @media print{
+    html,body{background:white;width:297mm}
+    .toolbar{display:none}
+    .page{margin:0 auto;box-shadow:none;width:287mm;min-height:auto;padding:4mm}
+    .delBtn,.addRow,.modeToggle{display:none}
+    table{font-size:9px}
+    td,th{padding:2px}
+    .title{font-size:15px}
+    .brand .logo{font-size:19px}
+    .descSel,.descInput{font-size:9px;padding:2px 3px}
+    .ptCell .input{font-size:11px;font-weight:400}
+    #pageScaleWrap{width:auto!important;height:auto!important}
+    .page{transform:none!important}
+    .page *{print-color-adjust:exact;-webkit-print-color-adjust:exact}
+    .autoCorr,.calc{print-color-adjust:exact;-webkit-print-color-adjust:exact}
+  }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <button class="btn light" id="syncJobBtn" onclick="saveToJobList()" title="Push the model, serial and location back to the job list">Save to job list</button>
+  <button class="btn" id="generateBtn" onclick="generatePDF()">Generate PDF</button>
+  <button class="btn light" id="moreToolsBtn" type="button" onclick="toggleMoreTools()">More…</button>
+  <span class="moreTools" id="moreTools" style="display:none">
+    <button class="btn light" id="generateExcelBtn" onclick="generateExcel()">Generate Excel</button>
+    <button class="btn light" onclick="window.print()">Print</button>
+    <button class="btn light" onclick="startNewCalibration()">Start New Calibration</button>
+    <button class="btn light" onclick="document.getElementById('offsetFile').click()">Load offsets</button>
+    <input id="offsetFile" type="file" accept="application/json,.json" style="display:none" onchange="loadOffsetsFile(event)">
+    <button class="btn light" onclick="document.getElementById('jobsheetFile').click()">Load Jobsheet PDF</button>
+    <input id="jobsheetFile" type="file" accept="application/pdf,.pdf" style="display:none" onchange="loadJobsheetPDF(event)">
+    <button class="btn light" onclick="loadLocal()">Load saved</button>
+    <button class="btn light" onclick="saveBackupToFile()" title="Downloads a JSON file with the form, points and probe offsets — keep it somewhere safe (email to yourself, Drive, etc.)">💾 Save Backup</button>
+    <button class="btn light" onclick="document.getElementById('backupRestoreFile').click()" title="Restore a previously saved backup file">Restore Backup</button>
+    <input id="backupRestoreFile" type="file" accept="application/json,.json" style="display:none" onchange="restoreBackupFromFile(event)">
+    <button class="btn light" onclick="document.getElementById('excelImportFile').click()">Import Excel</button>
+    <input id="excelImportFile" type="file" accept=".xlsx" style="display:none" onchange="importExcelFile(event)">
+  </span>
+  <span class="hintText" id="offsetStatus">Offline HTML prototype · monitoring system calibration worksheet</span>
+  <span class="hintText" id="lastSavedStamp" style="margin-left:auto;color:#0a7a0a"></span>
+
+</div>
+<div class="offsetWarning" id="offsetWarning" style="display:none"></div>
+<div class="offsetWarning" id="toleranceWarning" style="display:none"></div>
+<div class="modalOverlay" id="jobsheetModal" style="display:none">
+  <div class="modalBox">
+    <div class="modalHeader">Jobsheet devices found <button class="modalClose" onclick="closeJobsheetModal()" title="Close">×</button></div>
+    <div class="modalMeta" id="jobsheetModalMeta"></div>
+    <div class="modalList" id="jobsheetModalList"></div>
+  </div>
+</div>
+<div id="pageScaleWrap">
+<div class="page" id="page">
+  <div class="header">
+    <div class="title">MONITORING SYSTEM CALIBRATION WORKSHEET</div>
+    <div class="brand">
+      <div class="logo">❄ <span class="snow">LABCOLD</span></div>
+      <div class="sub">medical &amp; scientific refrigeration</div>
+      <div class="no">Worksheet No <span class="hintText">(for lab use)</span>: <input id="worksheetNo" style="width:110px;border:0;border-bottom:1px solid #333;text-align:center"></div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="field"><label>Job Reference No <span class="req">*</span>:</label><input id="jobRef"></div>
+    <div class="field"><label>Date <span class="req">*</span>:</label><span style="position:relative;display:block;height:22px"><input id="date" type="text" readonly placeholder="d/Mon/yyyy" style="cursor:pointer;width:100%;position:absolute;left:0;top:0;height:100%;border:0;border-bottom:1px dotted #333;background:transparent;font-size:12.5px;box-sizing:border-box;padding:3px 4px"><input id="dateNative" type="date" style="position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0;margin:0;z-index:2"></span></div>
+    <div class="field"><label>Site <span class="req">*</span>:</label><input id="site"></div>
+    <div class="field" style="grid-template-columns:auto 50px auto 50px"><label>Sheet</label><input id="sheetNo" style="text-align:center" value="1"><label>of</label><input id="sheetOf" style="text-align:center" value="1"></div>
+
+    <div class="field"><label>Department <span class="req">*</span>:</label><input id="department"></div>
+    <div class="field"><label>System Model <span class="req">*</span>:</label><input id="model" value="Cloud Temp"></div>
+    <div class="field" style="grid-column:span 2"><label>System Serial No <span class="req">*</span>:</label><input id="serial"></div>
+
+    <div class="field full" style="grid-template-columns:auto 1fr auto"><label>Digital Reference Thermometer Serial No <span class="req">*</span>:</label><input id="drtSerial" readonly placeholder="Loaded automatically from offsets file"><span id="drtValidity" class="validityBadge"></span></div>
+
+    <div style="grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr 0.55fr 1.7fr;gap:6px 20px">
+      <div class="field"><label>Room Temp Max <span class="req">*</span>:</label><input class="num" inputmode="decimal" id="rtMax" data-decimals="1" placeholder="xx.x"></div>
+      <div class="field"><label>Min <span class="req">*</span>:</label><span style="display:flex;align-items:center;gap:6px"><input class="num" inputmode="decimal" id="rtMin" data-decimals="1" placeholder="xx.x" style="flex:1"><span id="rtRangeWarn" class="rangeWarn" style="display:none">Max ≥ Min</span></span></div>
+      <div class="field"><label>Average:</label><input id="rtAvg" readonly></div>
+      <div class="field" style="grid-template-columns:auto 1fr auto"><label>Ref UKAS:</label><select id="refUkas"><option value="">-- select --</option></select><span id="refUkasValidity" class="validityBadge"></span></div>
+    </div>
+  </div>
+
+  <div class="quickAdd">
+    <div class="qaTitle" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
+      <span>QUICK ADD DEVICE <span class="hintText" style="font-weight:400;text-transform:none">(add 1–4 channels for one device at once)</span></span>
+      <span id="pointStats" class="pointStats">No devices added yet</span>
+    </div>
+    <div class="qaRow">
+      <div class="qaField" style="width:110px"><label>Point No</label><input id="qaPointNo" inputmode="numeric" maxlength="3" placeholder="e.g. 100"></div>
+      <div class="qaField qaChannels">
+        <label>Channels</label>
+        <span class="qaCheck"><input type="checkbox" id="qaCh1" class="qaChBox" value="1" checked><label for="qaCh1">CH1</label></span>
+        <span class="qaCheck"><input type="checkbox" id="qaCh2" class="qaChBox" value="2"><label for="qaCh2">CH2</label></span>
+        <span class="qaCheck"><input type="checkbox" id="qaCh3" class="qaChBox" value="3"><label for="qaCh3">CH3</label></span>
+        <span class="qaCheck"><input type="checkbox" id="qaCh4" class="qaChBox" value="4"><label for="qaCh4">CH4</label></span>
+      </div>
+      <button class="btn add" onclick="quickAddDevice()">+ Add selected channels</button>
+    </div>
+    <div class="hintText" style="margin-top:6px">Device type, model &amp; serial number are filled in per row below — Quick Add just creates the channel rows.</div>
+  </div>
+
+  <table id="pointsTable">
+    <thead>
+      <tr>
+        <th style="width:11%">Point No</th>
+        <th style="width:23%">Point Description <span class="hintText">(incl. monitoring system probe ref)</span></th>
+        <th style="width:6%">Monitor Display (°C)</th>
+        <th style="width:6%">Reference Temp (°C)</th>
+        <th style="width:7%">Probe Correction (°C)</th>
+        <th style="width:7%">Reference + Correction (°C)</th>
+        <th style="width:7%">Difference Ref. vs Display (°C)</th>
+        <th style="width:6%">Monitor Offset (°C)</th>
+        <th style="width:13%">Ref. Probe Serial No</th>
+        <th style="width:7%"></th>
+      </tr>
+    </thead>
+    <tbody id="pointsBody"></tbody>
+  </table>
+
+  <div class="footer">
+    <div class="field"><label>Engineer Name <span class="req">*</span>:</label><input id="engineer"></div>
+    <div class="field"><label>Signature:</label><span id="engSignature" class="signature"></span></div>
+    <div class="field"><label>Date:</label><input id="engDate" readonly></div>
+    <div class="field"><label>Checked By (Name):</label><input id="checkedBy"></div>
+    <div class="field"><label>Signature:</label><span id="checkSignature" class="signature"></span></div>
+    <div class="field"><label>Date:</label><input id="checkDate" readonly></div>
+  </div>
+</div>
+</div>
+<script>
+let PROBE_LIST=[], PROBES={}, DIGITAL_THERMOMETERS=[], roomTherms=[];
+let lastOffsetRaw=null;
+let pointCount=0;
+
+function isoToday(){return new Date().toISOString().slice(0,10)}
+function n(id){const v=parseFloat((document.getElementById(id)?.value||'').replace(',','.'));return Number.isFinite(v)?v:null}
+function val(id){return document.getElementById(id)?.value||''}
+function roundTo(num,decimals){ if(num===null||num===undefined||!Number.isFinite(num)) return null; const factor=Math.pow(10,decimals); const tolerance=1e-9; return num>=0 ? Math.round((num+tolerance)*factor)/factor : -Math.round((Math.abs(num)+tolerance)*factor)/factor; }
+function fmt(value,decimals=1){ const r=roundTo(value,decimals); return r===null ? '' : r.toFixed(decimals); }
+function set(id,v,dp=1){ const e=document.getElementById(id); if(!e) return; e.value=fmt(v,dp); }
+function displayDate(v){const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; if(!v)return ''; let m=String(v).match(/^(\d{4})-(\d{2})-(\d{2})$/); if(m)return `${Number(m[3])}/${months[Number(m[2])-1]}/${m[1]}`; return v}
+function dateForFile(v){
+  v=String(v||'').trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const months={jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};
+  const m=v.match(/^(\d{1,2})[\/\-\s]([A-Za-z]{3,})[\/\-\s](\d{4})$/);
+  if(m) return `${m[3]}-${months[m[2].slice(0,3).toLowerCase()]||m[2]}-${String(m[1]).padStart(2,'0')}`;
+  return v;
+}
+function monthYearDisplay(v){ const m=String(v||'').match(/^(\d{4})-(\d{2})$/); if(!m) return ''; const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return months[Number(m[2])-1]+'/'+m[1]; }
+function currentYearMonth(){ const iso=document.getElementById('dateNative')?.value||isoToday(); return iso.slice(0,7); }
+
+// ---- Offsets (same JSON format as the other Labcold worksheets) ----
+function buildProbeListFromOffsets(raw){
+  if(!raw || !raw.probes || !Object.keys(raw.probes).length) return null;
+  return Object.entries(raw.probes).map(([key,p])=>({
+    id:key,
+    label:`${p.port?p.port+' / ':''}${key}${p.sn?' / SN '+p.sn:''}`,
+    shortLabel:`${key}${p.port?', '+p.port:''}`,
+    corrections:p.c||{}
+  }));
+}
+function buildDigitalThermometersFromOffsets(raw){
+  if(!raw || !raw.refThermSerial) return null;
+  return [{ serial:raw.refThermSerial, label:raw.refThermSerial, calDue:raw.validUntil?monthYearDisplay(raw.validUntil):'' }];
+}
+function offsetsExpired(raw){
+  if(!raw || !raw.validUntil) return false;
+  return String(raw.validUntil) < currentYearMonth();
+}
+function offsetsAreCurrent(){ return !!(lastOffsetRaw && lastOffsetRaw.validUntil && Object.keys(PROBES).length && lastOffsetRaw.validUntil>=currentYearMonth()); }
+function fillDigitalThermometers(){
+  const el=document.getElementById('drtSerial'); if(!el) return;
+  const badge=document.getElementById('drtValidity');
+  if(DIGITAL_THERMOMETERS.length){
+    const t=DIGITAL_THERMOMETERS[0];
+    el.value=t.serial;
+    const expired=lastOffsetRaw?offsetsExpired(lastOffsetRaw):false;
+    el.title=t.calDue?`Calibration valid to: ${t.calDue}`:'';
+    if(badge){
+      if(t.calDue){
+        badge.textContent = expired ? `⚠ EXPIRED ${t.calDue} — cannot generate certificate` : `✓ Valid to ${t.calDue}`;
+        badge.className = 'validityBadge ' + (expired ? 'expired' : 'ok');
+      } else {
+        badge.textContent='';
+        badge.className='validityBadge';
+      }
+    }
+  } else if(badge){
+    badge.textContent='';
+    badge.className='validityBadge';
+  }
+}
+function rebuildRoomThermDropdown(){
+  roomTherms=roomTherms||[];
+  const sel=document.getElementById('refUkas'); if(!sel) return;
+  const current=sel.value;
+  sel.innerHTML='<option value="">-- select --</option>'+roomTherms.map(t=>{
+    const expired=t.validUntil && t.validUntil<currentYearMonth();
+    const label=`${t.id}${t.validUntil?' (valid to '+monthYearDisplay(t.validUntil)+')':''}${expired?' — EXPIRED':''}`;
+    return `<option value="${t.id}"${expired?' style="color:#b00000"':''}>${label}</option>`;
+  }).join('');
+  if(current && roomTherms.some(t=>t.id===current)) sel.value=current;
+  else if(roomTherms.length===1) sel.value=roomTherms[0].id;
+  refreshRefUkasValidity();
+}
+function refreshRefUkasValidity(){
+  const sel=document.getElementById('refUkas'); const badge=document.getElementById('refUkasValidity');
+  if(!sel || !badge) return;
+  const t=(roomTherms||[]).find(x=>x.id===sel.value);
+  if(!t || !t.validUntil){ badge.textContent=''; badge.className='validityBadge'; return; }
+  const due=monthYearDisplay(t.validUntil);
+  const expired=t.validUntil<currentYearMonth();
+  badge.textContent = expired ? `⚠ EXPIRED ${due}` : `✓ Valid to ${due}`;
+  badge.className = 'validityBadge ' + (expired ? 'expired' : 'ok');
+}
+function fillProbeDropdowns(){
+  document.querySelectorAll('select.probe').forEach(sel=>{
+    const current=sel.value;
+    sel.innerHTML='<option value="">-- select probe --</option>'+PROBE_LIST.map(p=>`<option value="${p.id}" title="${p.label}">${p.shortLabel}</option>`).join('');
+    if(current && PROBES[current]) sel.value=current;
+  });
+}
+function nearestCorrection(probeId,refTemp){
+  if(!probeId||!PROBES[probeId]||refTemp===null) return null;
+  const corrections=PROBES[probeId].corrections;
+  const points=Object.keys(corrections).map(Number);
+  if(!points.length) return null;
+  const nearest=points.reduce((best,p)=>Math.abs(p-refTemp)<Math.abs(best-refTemp)?p:best,points[0]);
+  return {point:nearest,corr:corrections[String(nearest)],label:PROBES[probeId].label};
+}
+function lockReferenceFields(){
+  const unlocked=Object.keys(PROBES).length>0;
+  for(let i=1;i<=pointCount;i++){
+    const afEl=document.getElementById(`p${i}_af_ref`);
+    if(afEl){
+      afEl.disabled=!unlocked;
+      afEl.classList.toggle('lockedRef', !unlocked);
+      afEl.title=unlocked?'':'Load a probe offsets file first — Reference Temp cannot be entered until probe offsets are loaded.';
+      if(!unlocked) afEl.value='';
+    }
+    // As Left Reference Temp is owned by the N/A logic (setAlNeeded) — it should only ever
+    // be force-locked here when offsets aren't loaded at all, never force-unlocked, or it
+    // would override the "not needed / N/A" state and re-enable a field that should stay off.
+    const alEl=document.getElementById(`p${i}_al_ref`);
+    if(alEl && !unlocked){
+      alEl.disabled=true;
+      alEl.classList.add('lockedRef');
+      alEl.title='Load a probe offsets file first — Reference Temp cannot be entered until probe offsets are loaded.';
+      alEl.value='';
+    }
+  }
+}
+function refreshOffsetWarning(){
+  lockReferenceFields();
+  const banner=document.getElementById('offsetWarning');
+  if(!banner) return;
+  const current=offsetsAreCurrent();
+  if(!current){
+    banner.classList.remove('soon');
+    banner.style.display='block';
+    banner.textContent=lastOffsetRaw && Object.keys(PROBES).length
+      ? `⚠ Fluke & Comark probe offsets expired ${monthYearDisplay(lastOffsetRaw.validUntil)}. The reference thermometer needs recalibrating — load a current file on the LabCal home page before generating a certificate.`
+      : '⚠ No Fluke & Comark probe offsets available. Load them once on the LabCal home page (they are then remembered for every worksheet), or use "Load offsets" here.';
+  } else {
+    // Still valid — but give plenty of notice before the certificate runs out.
+    const daysLeft = window.LabCalOffsets ? LabCalOffsets.daysLeft(lastOffsetRaw&&lastOffsetRaw.validUntil) : null;
+    banner.classList.remove('soon');
+    if(daysLeft!=null && daysLeft<=14){
+      banner.classList.add('soon');
+      banner.style.display='block';
+      banner.textContent = `⏳ Reference thermometer certificate runs out in ${daysLeft} day${daysLeft===1?'':'s'}. Book the recalibration — worksheets lock as soon as it expires.`;
+    }else{
+      banner.style.display='none';
+    }
+  }
+  updateGenerateButtonsAvailability();
+}
+// v1.544: an expired room thermometer (Ref UKAS) now blocks the certificate
+// and the Excel export, the same as on every other worksheet. Nothing is
+// selected = nothing to block (the field is not required on this sheet).
+function refUkasExpired(){
+  const id=val('refUkas');
+  if(!id) return false;
+  const t=(roomTherms||[]).find(x=>x.id===id);
+  return !!(t && t.validUntil && t.validUntil<currentYearMonth());
+}
+function anyPointOutOfTolerance(){
+  for(let i=1;i<=pointCount;i++){
+    const alRow=document.getElementById(`p${i}_row_al`);
+    if(alRow && alRow.classList.contains('outOfTolerance')) return true;
+  }
+  return false;
+}
+function updateGenerateButtonsAvailability(){
+  const ok = offsetsAreCurrent() && !anyPointOutOfTolerance();
+  const genBtn=document.getElementById('generateBtn');
+  const excelBtn=document.getElementById('generateExcelBtn');
+  if(genBtn) genBtn.disabled=!ok;
+  if(excelBtn) excelBtn.disabled=!ok;
+}
+function checkToleranceBanner(){
+  const banner=document.getElementById('toleranceWarning');
+  if(!banner) return;
+  const anyOut=anyPointOutOfTolerance();
+  banner.style.display = anyOut ? 'block' : 'none';
+  banner.textContent = anyOut ? '⚠ One or more points are still outside tolerance after adjustment (As Left difference exceeds ±0.5°C). Correct these — highlighted in red — before generating a certificate.' : '';
+  updateGenerateButtonsAvailability();
+}
+// ---------------------------------------------------------------------
+// The engineer's name, signature and date come from the offsets file and
+// are not typed on the sheet. Who performed the calibration and when are
+// part of the record, not free text a later hand can alter.
+// The checker's fields stay open — that is somebody else's to sign.
+// ---------------------------------------------------------------------
+function lockSignatureBlock(raw){
+  raw = raw || (window.LabCalOffsets && lastOffsetRaw) || {};
+  const lock=(id,value)=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    if(value) el.value=value;
+    el.readOnly=true;
+    el.setAttribute('aria-readonly','true');
+    el.style.background='var(--bg2, #f1f3f5)';
+    el.style.color='#333';
+    el.title='From the offsets file — not editable here';
+  };
+  const name=raw.engineerName||'';
+  lock('engineer', name);
+  lock('engineerSignature', raw.engineerSignature || name);
+  // the date the work was done, not a date anyone can set afterwards
+  const d=new Date();
+  const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const today=String(d.getDate()).padStart(2,'0')+'/'+MON[d.getMonth()]+'/'+d.getFullYear();
+  const dEl=document.getElementById('engDate');
+  lock('engDate', (dEl && dEl.value) ? dEl.value : today);
+}
+
+function applyOffsetsData(raw, sourceLabel){
+  lastOffsetRaw=raw;
+  roomTherms=Array.isArray(raw.roomTherms)?raw.roomTherms:[];
+  lockSignatureBlock(raw); if(typeof updateSignatures==='function') updateSignatures();
+  PROBE_LIST=buildProbeListFromOffsets(raw)||[];
+  PROBES=Object.fromEntries(PROBE_LIST.map(p=>[p.id,p]));
+  DIGITAL_THERMOMETERS=buildDigitalThermometersFromOffsets(raw)||[];
+  fillProbeDropdowns();
+  fillDigitalThermometers();
+  rebuildRoomThermDropdown();
+  calculateAll();
+  const statusEl=document.getElementById('offsetStatus');
+  if(statusEl){
+    let left='';
+    if(window.LabCalOffsets){
+      const d=LabCalOffsets.daysLeft(raw.validUntil);
+      if(d!=null) left = d<0 ? ' — EXPIRED' : ` (${d} day${d===1?'':'s'} left)`;
+    }
+    statusEl.textContent=`Offsets ${sourceLabel}: ${Object.keys(PROBES).length} probes, valid until ${monthYearDisplay(raw.validUntil)}${left}${raw.engineerName?', engineer '+raw.engineerName:''}.`;
+    statusEl.style.color=offsetsExpired(raw)?'#b00000':'#0a7a0a';
+  }
+  refreshOffsetWarning();
+}
+const OFFSET_DEVICE='fluke_comark';
+// Loaded once on the LabCal home page and kept in the shared vault until the
+// certificate expires — this worksheet reads it at startup. Loading a file
+// here still works and refreshes the vault for every other worksheet.
+let appliedOffsetsSig=null;
+function offsetsFingerprint(raw){
+  return [raw.validUntil, raw.refThermSerial||'', raw.engineerName||'',
+          Object.keys(raw.probes||{}).join(',')].join('|');
+}
+// Device handed over from the jobsheet worklist. Cloud Temp systems are
+// entered per monitoring point rather than per unit, so only the shared
+// header fields are prefilled — never into a field already filled in.
+function applyJobsheetHandoff(){
+  if(!window.LabCalJobsheet) return false;
+  const p=LabCalJobsheet.takeHandoff('cloud_temp');
+  if(!p) return false;
+  const d=p.device||{}, j=p.jobsheet||{};
+  const fill=(id,val)=>{
+    const el=document.getElementById(id);
+    if(el && val && !String(el.value||'').trim()) el.value=val;
+  };
+  fill('site', j.customer||'');
+  fill('jobRef', j.callNumber||'');
+  fill('department', d.location||j.department||'');
+  fill('serial', d.serial||'');
+  return true;
+}
+function restoreVaultOffsets(){
+  if(!window.LabCalOffsets) return false;
+  const raw=LabCalOffsets.load(OFFSET_DEVICE);
+  if(!raw || !buildProbeListFromOffsets(raw)) return false;
+  // Re-applying identical offsets would rebuild every dropdown and throw away
+  // the channel/probe setup already entered on a part-finished worksheet.
+  const sig=offsetsFingerprint(raw);
+  if(sig===appliedOffsetsSig) return true;
+  appliedOffsetsSig=sig;
+  applyOffsetsData(raw, 'from LabCal home');
+  return true;
+}
+async function loadOffsetsFile(ev){
+  const file=ev.target.files && ev.target.files[0];
+  ev.target.value='';
+  if(!file) return;
+  if(window.LabCalOffsets){
+    const res=await LabCalOffsets.ingestFile(file, OFFSET_DEVICE);
+    if(!res.ok){ alert('Cannot load this offsets file.\n\n'+res.error); return; }
+    if(!buildProbeListFromOffsets(res.raw)){ alert('No probe data found in that file.'); return; }
+    applyOffsetsData(res.raw, res.remembered?'loaded from file':'loaded for this session only');
+    return;
+  }
+  try{
+    const raw=JSON.parse(await file.text());
+    if(raw && raw.device!=='fluke_comark'){ throw new Error('wrong device'); }
+    const probeList=buildProbeListFromOffsets(raw);
+    if(!probeList) throw new Error('No probe data found');
+    if(!raw.validUntil) throw new Error('Missing validUntil');
+    applyOffsetsData(raw, 'loaded from file');
+  }catch(e){
+    alert('Cannot load this offsets file, it has no expiry date set, or it was exported from a different thermometer type (e.g. Dostmann). Please export a current JSON file from the Fluke & Comark Offset Manager (with a "valid until" date set).');
+  }
+}
+
+// ---- Jobsheet PDF import ----
+if(window.pdfjsLib){ pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js'; }
+function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function mergeOrdinalSuperscripts(items){
+  // v1.549: "3rd", "1st", "2nd", "4th"... Jobsheets print the suffix as a
+  // raised (superscript) "rd". pdf.js returns it as a separate piece sitting
+  // a few points higher, so it was grouped as a line of its own and ended up
+  // in front of the text: "Medical Room, 3rd Floor" came out as
+  // "rd Medical Room, 3 Floor". Glue any lone st/nd/rd/th that sits right
+  // after a number (touching it horizontally, level with or slightly above
+  // it) back onto that number before the lines are built.
+  const list=(items||[]).map(it=>Object.assign({}, it));
+  const dropped=new Set();
+  list.forEach((s,i)=>{
+    if(!s || typeof s.str!=='string' || !/^\s*(st|nd|rd|th)\s*$/i.test(s.str) || !s.transform) return;
+    const sx=s.transform[4], sy=s.transform[5];
+    let best=-1, bestGap=Infinity;
+    list.forEach((b,j)=>{
+      if(j===i || dropped.has(j) || !b || typeof b.str!=='string' || !b.transform) return;
+      if(!/\d\s*$/.test(b.str)) return;
+      const end=b.transform[4]+(b.width||0);
+      const gap=sx-end, dy=sy-b.transform[5];
+      if(gap<-4 || gap>3 || dy<-0.5 || dy>8) return;
+      if(Math.abs(gap)<bestGap){ bestGap=Math.abs(gap); best=j; }
+    });
+    if(best<0) return;
+    const b=list[best];
+    b.str=b.str.replace(/\s+$/,'')+s.str.trim();
+    b.width=Math.max(b.width||0, sx+(s.width||0)-b.transform[4]);
+    dropped.add(i);
+  });
+  return list.filter((_,i)=>!dropped.has(i));
+}
+async function pdfToRows(file){
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  const rows=[];
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p);
+    const content=await page.getTextContent();
+    const byY={};
+    mergeOrdinalSuperscripts(content.items).forEach(it=>{
+      if(!it.str || !it.str.trim()) return;
+      const y=Math.round(it.transform[5]);
+      let key=null;
+      for(const k of Object.keys(byY)){ if(Math.abs(Number(k)-y)<=3){ key=k; break; } }
+      if(key===null) key=String(y);
+      (byY[key]=byY[key]||[]).push({x:it.transform[4],str:it.str});
+    });
+    Object.keys(byY).map(Number).sort((a,b)=>b-a).forEach(y=>{
+      const items=byY[String(y)].sort((a,b)=>a.x-b.x);
+      const text=items.map(o=>o.str).join(' ').replace(/\s+/g,' ').trim();
+      if(text) rows.push({page:p,y,text});
+    });
+  }
+  return rows;
+}
+function ddmmyyyyToIso(v){
+  const m=String(v||'').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
+}
+async function parseJobsheetPDF(file){
+  const rows=await pdfToRows(file);
+  const fullText=rows.map(r=>r.text);
+  const result={jobRef:'',site:'',dateNative:'',model:'',devices:[]};
+
+  // --- Customer / Call Number / Job Ref (header info block) ---
+  const custHeaderIdx=fullText.findIndex(t=>/Customer/i.test(t)&&/Call Date/i.test(t)&&/Call Number/i.test(t));
+  if(custHeaderIdx>-1 && rows[custHeaderIdx+1]){
+    const m=rows[custHeaderIdx+1].text.match(/^(.*?)\s+\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}\s+\S+\s+([A-Z]+\d+)\s*$/);
+    if(m){ result.site=m[1].trim(); result.jobRef=m[2].trim(); }
+  }
+  if(!result.jobRef){ const m=fullText.join(' ').match(/\b([A-Z]{2,5}\d{4,})\b/); if(m) result.jobRef=m[1]; }
+
+  // --- Visit Booked For -> calibration Date ---
+  const faultHeaderIdx=fullText.findIndex(t=>/Fault Details/i.test(t)&&/Access Time/i.test(t)&&/Visit Booked For/i.test(t));
+  if(faultHeaderIdx>-1 && rows[faultHeaderIdx+1]){
+    const m=rows[faultHeaderIdx+1].text.match(/(\d{2}\/\d{2}\/\d{4})\s*$/);
+    if(m) result.dateNative=ddmmyyyyToIso(m[1]);
+  }
+
+  // --- Model / Serial device table (one or many rows) ---
+  rows.forEach(r=>{
+    const m=r.text.match(/^(.+?)\s+(\d+\s*-\s*\d+)\s*$/);
+    if(!m) return;
+    const model=m[1].trim();
+    const serial=m[2].replace(/\s+/g,'');
+    if(/^(model|serial)$/i.test(model)) return; // skip header row itself
+    const pm=serial.match(/-(\d+)\s*$/);
+    result.devices.push({ model, serial, pointNo: pm?pm[1]:serial });
+  });
+  if(result.devices.length) result.model=result.devices[0].model;
+  return result;
+}
+function baseSystemSerial(raw){
+  return String(raw||'').split('-')[0].trim();
+}
+let jobsheetDevices=[];
+async function loadJobsheetPDF(ev){
+  const file=ev.target.files && ev.target.files[0]; if(!file) return;
+  try{
+    if(!window.pdfjsLib) throw new Error('PDF library not available (no internet connection to load it)');
+    const parsed=await parseJobsheetPDF(file);
+    if(parsed.jobRef) document.getElementById('jobRef').value=parsed.jobRef;
+    if(parsed.site) document.getElementById('site').value=parsed.site;
+    if(parsed.dateNative){
+      document.getElementById('dateNative').value=parsed.dateNative;
+      document.getElementById('date').value=displayDate(parsed.dateNative);
+      syncFooterDates(); fillDigitalThermometers(); rebuildRoomThermDropdown(); refreshOffsetWarning();
+    }
+    if(parsed.model) document.getElementById('model').value=parsed.model;
+    jobsheetDevices=parsed.devices;
+    const statusEl=document.getElementById('offsetStatus');
+    if(!jobsheetDevices.length){
+      if(statusEl){ statusEl.textContent='Jobsheet loaded — header fields filled, but no Model/Serial device rows were found in the PDF.'; statusEl.style.color='#cc7a00'; }
+    } else if(jobsheetDevices.length===1){
+      const d=jobsheetDevices[0];
+      const serialEl=document.getElementById('serial'); if(serialEl && !serialEl.value) serialEl.value=baseSystemSerial(d.serial);
+      const qaEl=document.getElementById('qaPointNo'); if(qaEl) qaEl.value=d.pointNo;
+      if(statusEl){ statusEl.textContent=`Jobsheet loaded: 1 device found (${d.serial}) — Point No pre-filled in Quick Add, pick channels and Add.`; statusEl.style.color='#0a7a0a'; }
+    } else {
+      openJobsheetModal(parsed);
+      if(statusEl){ statusEl.textContent=`Jobsheet loaded: ${jobsheetDevices.length} devices found — pick one from the list to load into Quick Add.`; statusEl.style.color='#0a7a0a'; }
+    }
+    autosave();
+  }catch(e){
+    alert('Could not read this jobsheet PDF: '+(e && e.message ? e.message : e));
+  }
+  ev.target.value='';
+}
+function openJobsheetModal(parsed){
+  const modal=document.getElementById('jobsheetModal'); if(!modal) return;
+  const meta=document.getElementById('jobsheetModalMeta');
+  if(meta) meta.textContent=`${parsed.jobRef||'Job'} — ${parsed.site||''} — ${parsed.devices.length} device(s) found. Click "Use" to load a serial's point number into Quick Add, then pick channels and Add.`;
+  const list=document.getElementById('jobsheetModalList');
+  if(list) list.innerHTML=parsed.devices.map((d,i)=>`
+    <div class="jobsheetRow">
+      <span>${escapeHtml(d.model)} — <b>${escapeHtml(d.serial)}</b></span>
+      <button class="btn light" onclick="applyJobsheetDevice(${i})">Use → Point ${escapeHtml(d.pointNo)}</button>
+    </div>`).join('');
+  modal.style.display='flex';
+}
+function closeJobsheetModal(){ const modal=document.getElementById('jobsheetModal'); if(modal) modal.style.display='none'; }
+function applyJobsheetDevice(i){
+  const d=jobsheetDevices[i]; if(!d) return;
+  const qaEl=document.getElementById('qaPointNo'); if(qaEl) qaEl.value=d.pointNo;
+  const serialEl=document.getElementById('serial'); if(serialEl && !serialEl.value) serialEl.value=baseSystemSerial(d.serial);
+  closeJobsheetModal();
+  if(qaEl) qaEl.focus();
+}
+
+// ---- Dynamic point rows ----
+const TOLERANCE = 0.5; // °C — As Left auto-marked N/A when As Found difference is within this
+function pointRowHtml(idx, phase){
+  const label = phase==='af' ? 'As Found' : 'As Left';
+  return `
+    <td><input class="input num" inputmode="decimal" id="p${idx}_${phase}_display" data-decimals="1" placeholder="xx.x"></td>
+    <td><input class="input num" inputmode="decimal" id="p${idx}_${phase}_ref" data-decimals="1" placeholder="xx.x"></td>
+    <td><input class="input num autoCorr" id="p${idx}_${phase}_corr" readonly><div class="spHint" id="p${idx}_${phase}_spHint"></div></td>
+    <td><input class="input calc" id="p${idx}_${phase}_refcorr" readonly></td>
+    <td><input class="input calc" id="p${idx}_${phase}_diff" readonly></td>
+    <td><input class="input num" inputmode="decimal" id="p${idx}_${phase}_offset" data-decimals="1" placeholder="xx.x"></td>
+    <td class="probeCell"><select class="input probe" id="p${idx}_${phase}_probe"></select><span class="naText" id="p${idx}_${phase}_naText">NA</span></td>
+    <td class="phaseLabel" id="p${idx}_${phase}_label">${label}</td>
+  `;
+}
+function escapeAttr(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
+function descBodyHtml(idx, mode, vals){
+  vals = vals||{};
+  if(mode==='device'){
+    return `
+      <div class="descRow">
+        <select class="descSel" id="p${idx}_deviceType">
+          <option value="">Device type…</option>
+          <option value="Fridge"${vals.deviceType==='Fridge'?' selected':''}>Fridge</option>
+          <option value="Freezer"${vals.deviceType==='Freezer'?' selected':''}>Freezer</option>
+        </select>
+        <input class="descInput" id="p${idx}_location" placeholder="Location" value="${escapeAttr(vals.location)}">
+      </div>
+      <input class="descInput full" id="p${idx}_model" placeholder="Model No" value="${escapeAttr(vals.model)}">
+      <input class="descInput full" id="p${idx}_serial" placeholder="Serial No" value="${escapeAttr(vals.serial)}">
+    `;
+  }
+  return `
+    <div class="ambientLabel">Room Ambient Temperature</div>
+    <input class="descInput full" id="p${idx}_location" placeholder="Location" value="${escapeAttr(vals.location)}">
+  `;
+}
+function updatePointStats(){
+  const el=document.getElementById('pointStats');
+  if(!el) return;
+  const bases=new Set();
+  let channelCount=0;
+  for(let i=1;i<=pointCount;i++){
+    const pEl=document.getElementById(`p${i}_pointNo`);
+    if(!pEl) continue;
+    channelCount++;
+    const base=pointBaseNo(pEl.value).trim();
+    bases.add(base || `__row${i}`); // no point no yet — still counts as its own device for now
+  }
+  if(!channelCount){ el.textContent='No devices added yet'; return; }
+  const deviceCount=bases.size;
+  el.textContent=`${deviceCount} device${deviceCount===1?'':'s'} · ${channelCount} channel${channelCount===1?'':'s'}`;
+}
+function pointBaseNo(pointNoStr){
+  const m=String(pointNoStr||'').match(/^(.*?)\s*\/\s*CH\d+$/i);
+  return (m ? m[1] : pointNoStr||'').trim();
+}
+function syncLocationAcrossChannels(idx){
+  const base=pointBaseNo(val(`p${idx}_pointNo`));
+  if(!base) return;
+  const newLoc=val(`p${idx}_location`);
+  for(let i=1;i<=pointCount;i++){
+    if(i===idx) continue;
+    const otherPointNoEl=document.getElementById(`p${i}_pointNo`);
+    if(!otherPointNoEl) continue;
+    if(pointBaseNo(otherPointNoEl.value)===base){
+      const otherLocEl=document.getElementById(`p${i}_location`);
+      if(otherLocEl && otherLocEl.value!==newLoc) otherLocEl.value=newLoc;
+    }
+  }
+}
+function attachDescListeners(idx){
+  ['location','deviceType','model','serial'].forEach(k=>{
+    const el=document.getElementById(`p${idx}_${k}`);
+    if(!el) return;
+    el.addEventListener('input',()=>{ autosave(); if(k==='location') syncLocationAcrossChannels(idx); });
+    el.addEventListener('change',()=>{ autosave(); if(k==='location') syncLocationAcrossChannels(idx); });
+  });
+}
+function setPointMode(idx, mode, vals){
+  const cell=document.getElementById(`p${idx}_descCell`);
+  const body=document.getElementById(`p${idx}_descBody`);
+  if(!cell||!body) return;
+  if(!vals){
+    vals={ location:val(`p${idx}_location`), deviceType:val(`p${idx}_deviceType`), model:val(`p${idx}_model`), serial:val(`p${idx}_serial`) };
+  }
+  cell.dataset.mode=mode;
+  body.innerHTML=descBodyHtml(idx,mode,vals);
+  cell.querySelectorAll('.modeBtn').forEach(b=>b.classList.toggle('active', b.dataset.mode===mode));
+  attachDescListeners(idx);
+  autosave();
+}
+function insertPointRowPair(tbody, trAF, trAL, baseNo){
+  let insertAfter=null;
+  if(baseNo){
+    // find the LAST row in DOM order that belongs to the same device, so a new
+    // channel lands right next to its siblings instead of always at the bottom
+    for(const tr of tbody.children){
+      if(tr.dataset && tr.dataset.base===baseNo) insertAfter=tr;
+    }
+  }
+  if(insertAfter){
+    insertAfter.after(trAF, trAL); // continuing an existing device's group — no new border
+  } else {
+    trAF.classList.add('pointStart'); // first channel of a new device — mark the boundary
+    tbody.appendChild(trAF);
+    tbody.appendChild(trAL);
+  }
+}
+function addPoint(prefill){
+  pointCount++;
+  const idx=pointCount;
+  const tbody=document.getElementById('pointsBody');
+  const baseNo=prefill && prefill.pointNo!=null ? pointBaseNo(prefill.pointNo) : '';
+  const trAF=document.createElement('tr');
+  trAF.id=`p${idx}_row_af`;
+  trAF.dataset.base=baseNo;
+  trAF.innerHTML=`
+    <td rowspan="2" class="ptCell"><button class="delBtn" onclick="removePoint(${idx})" title="Remove point">×</button><input class="input lockedRef" id="p${idx}_pointNo" placeholder="Point No" readonly tabindex="-1"></td>
+    <td rowspan="2" class="descCell" id="p${idx}_descCell">
+      <div class="modeToggle">
+        <button type="button" class="modeBtn" data-mode="ambient" onclick="setPointMode(${idx},'ambient')">Ambient</button>
+        <button type="button" class="modeBtn" data-mode="device" onclick="setPointMode(${idx},'device')">Device</button>
+      </div>
+      <div class="descBody" id="p${idx}_descBody"></div>
+    </td>
+    ${pointRowHtml(idx,'af')}
+  `;
+  const trAL=document.createElement('tr');
+  trAL.id=`p${idx}_row_al`;
+  trAL.dataset.base=baseNo;
+  trAL.innerHTML=pointRowHtml(idx,'al');
+  insertPointRowPair(tbody, trAF, trAL, baseNo);
+
+  attachRowListeners(idx);
+  fillProbeDropdowns();
+  lockReferenceFields();
+
+  if(prefill && prefill.pointNo!=null) document.getElementById(`p${idx}_pointNo`).value=prefill.pointNo;
+  let inheritedLocation=null;
+  if(!prefill || !prefill.location){
+    const base=pointBaseNo(prefill && prefill.pointNo!=null ? prefill.pointNo : val(`p${idx}_pointNo`));
+    if(base){
+      for(let i=1;i<idx;i++){
+        const otherPointNoEl=document.getElementById(`p${i}_pointNo`);
+        if(otherPointNoEl && pointBaseNo(otherPointNoEl.value)===base){
+          const otherLoc=val(`p${i}_location`);
+          if(otherLoc){ inheritedLocation=otherLoc; break; }
+        }
+      }
+    }
+  }
+  const initialMode=(prefill && prefill.mode) ? prefill.mode : 'ambient';
+  const initialVals=prefill ? {location:prefill.location||inheritedLocation, deviceType:prefill.deviceType, model:prefill.model, serial:prefill.serial} : {location:inheritedLocation};
+  setPointMode(idx, initialMode, initialVals);
+
+  if(prefill){
+    ['af','al'].forEach(phase=>{
+      const d=prefill[phase]||{};
+      ['display','ref','offset'].forEach(k=>{ if(d[k]!=null) document.getElementById(`p${idx}_${phase}_${k}`).value=d[k]; });
+      if(d.probe){ const sel=document.getElementById(`p${idx}_${phase}_probe`); if(sel) sel.value=d.probe; }
+    });
+  }
+  calculatePoint(idx);
+  updatePointStats();
+}
+function padPointNo(raw){
+  const trimmed=String(raw||'').trim();
+  return /^\d+$/.test(trimmed) ? trimmed.padStart(3,'0') : trimmed;
+}
+function formatPointNoField(el){
+  const v=(el.value||'').trim();
+  const m=v.match(/^(\d+)(\s*\/\s*(CH\d+))?$/i);
+  if(!m) return;
+  const padded=m[1].padStart(3,'0');
+  el.value = m[3] ? `${padded} / ${m[3].toUpperCase()}` : padded;
+}
+function existingPointNos(){
+  const set=new Set();
+  for(let i=1;i<=pointCount;i++){
+    const el=document.getElementById(`p${i}_pointNo`);
+    if(el && el.value.trim()) set.add(el.value.trim());
+  }
+  return set;
+}
+function quickAddDevice(){
+  const pointNoBase=padPointNo(val('qaPointNo'));
+  const channels=Array.from(document.querySelectorAll('.qaChBox:checked')).map(cb=>cb.value);
+  if(!pointNoBase){ alert('Enter a Point No first.'); document.getElementById('qaPointNo').focus(); return; }
+  if(!channels.length){ alert('Select at least one channel.'); return; }
+  const existing=existingPointNos();
+  const toAdd=[], skipped=[];
+  channels.forEach(chNum=>{
+    const pointNo=`${pointNoBase} / CH${chNum}`;
+    if(existing.has(pointNo)){ skipped.push(pointNo); }
+    else { toAdd.push({pointNo,chNum}); existing.add(pointNo); }
+  });
+  if(!toAdd.length){
+    alert(`Point ${pointNoBase} already has all selected channels: ${skipped.join(', ')}. Choose a different point number or channel.`);
+    return;
+  }
+  toAdd.forEach(({pointNo,chNum})=>{
+    const mode=chNum==='1' ? 'ambient' : 'device';
+    addPoint({ pointNo, mode });
+  });
+  if(skipped.length){
+    alert(`Added ${toAdd.length} channel(s). Skipped (already exist): ${skipped.join(', ')}.`);
+  }
+  document.getElementById('qaPointNo').value='';
+  document.getElementById('qaPointNo').focus();
+  autosave();
+}
+function removePoint(idx){
+  if(!confirm('Remove this point?')) return;
+  const rowAF=document.getElementById(`p${idx}_row_af`);
+  const rowAL=document.getElementById(`p${idx}_row_al`);
+  if(rowAF && rowAF.classList.contains('pointStart')){
+    const next=(rowAL||rowAF).nextElementSibling;
+    if(next) next.classList.add('pointStart');
+  }
+  rowAF?.remove();
+  rowAL?.remove();
+  updatePointStats();
+  autosave();
+}
+function attachRowListeners(idx){
+  const pointNoEl=document.getElementById(`p${idx}_pointNo`);
+  if(pointNoEl){
+    pointNoEl.addEventListener('input',()=>autosave());
+    pointNoEl.addEventListener('blur',()=>{ formatPointNoField(pointNoEl); autosave(); });
+  }
+  ['af','al'].forEach(phase=>{
+    ['display','ref','offset'].forEach(k=>{
+      const el=document.getElementById(`p${idx}_${phase}_${k}`);
+      if(!el) return;
+      el.addEventListener('input',()=>{ decimalOK(el); calculatePoint(idx); autoAdvance(el); });
+      el.addEventListener('blur',()=>decimalOK(el));
+    });
+    const probeSel=document.getElementById(`p${idx}_${phase}_probe`);
+    if(probeSel) probeSel.addEventListener('change',()=>calculatePoint(idx));
+  });
+}
+function calcPhase(idx, phase){
+  const ref=n(`p${idx}_${phase}_ref`);
+  const display=n(`p${idx}_${phase}_display`);
+  const probeId=val(`p${idx}_${phase}_probe`);
+  const corrEl=document.getElementById(`p${idx}_${phase}_corr`);
+  const refCorrEl=document.getElementById(`p${idx}_${phase}_refcorr`);
+  const diffEl=document.getElementById(`p${idx}_${phase}_diff`);
+  const spHintEl=document.getElementById(`p${idx}_${phase}_spHint`);
+  if(!corrEl||!refCorrEl||!diffEl) return null;
+  const picked=nearestCorrection(probeId,ref);
+  let corr=null;
+  if(picked){
+    corr=picked.corr;
+    corrEl.value=fmt(corr,1);
+    corrEl.title=`${picked.label}: nearest correction ${picked.point} °C = ${fmt(corr,1)} for reference ${ref} °C`;
+    if(spHintEl) spHintEl.textContent=`SP ${picked.point}°C`;
+  } else {
+    corrEl.value=''; corrEl.title='';
+    if(spHintEl) spHintEl.textContent='';
+  }
+  const refCorr = (ref!==null && corr!==null) ? ref+corr : null;
+  refCorrEl.value = refCorr!==null ? fmt(refCorr,1) : '';
+  const diff = (refCorr!==null && display!==null) ? refCorr-display : null;
+  diffEl.value = diff!==null ? fmt(diff,1) : '';
+  return diff;
+}
+function setAlNeeded(idx, needed){
+  const row=document.getElementById(`p${idx}_row_al`);
+  if(!row) return;
+  const wasNeeded=!row.classList.contains('notNeeded');
+  const probeSel=document.getElementById(`p${idx}_al_probe`);
+  const naText=document.getElementById(`p${idx}_al_naText`);
+  if(needed!==wasNeeded){
+    const isNA=!needed;
+    row.classList.toggle('notNeeded', isNA);
+    ['display','ref','offset','corr','refcorr','diff'].forEach(f=>{
+      const el=document.getElementById(`p${idx}_al_${f}`);
+      if(!el) return;
+      el.disabled=isNA;
+      el.classList.toggle('na', isNA);
+      el.value = isNA ? 'NA' : '';
+      el.classList.remove('invalid','valid','reqMissing');
+    });
+    if(probeSel){ probeSel.value=''; probeSel.style.display=isNA?'none':''; }
+    if(naText) naText.style.display=isNA?'inline':'none';
+    const spHintEl=document.getElementById(`p${idx}_al_spHint`); if(spHintEl) spHintEl.textContent='';
+    if(!isNA) row.classList.remove('outOfTolerance');
+  }
+  // The As Left probe is always the same physical reference probe used for As Found on this
+  // channel — auto-linked and locked so it can never be mismatched by mistake.
+  if(probeSel){
+    probeSel.disabled=true;
+    probeSel.classList.toggle('lockedRef', needed);
+    probeSel.title = needed ? 'Same reference probe as As Found (auto-linked, cannot be changed independently)' : '';
+    if(needed){
+      const afProbe=val(`p${idx}_af_probe`);
+      if(probeSel.value!==afProbe) probeSel.value=afProbe;
+    }
+  }
+  const labelEl=document.getElementById(`p${idx}_al_label`);
+  if(labelEl && !needed) labelEl.textContent='As Left — N/A (within tolerance)';
+}
+function calculatePoint(idx){
+  const afDiff=calcPhase(idx,'af');
+  const afDiffRounded = afDiff===null ? null : roundTo(Math.abs(afDiff),1);
+  const needed = afDiffRounded===null ? false : afDiffRounded>TOLERANCE;
+  setAlNeeded(idx, needed);
+  if(needed) calcPhase(idx,'al');
+  updateToleranceStatus(idx, needed);
+  autosave();
+}
+function updateToleranceStatus(idx, needed){
+  const alRow=document.getElementById(`p${idx}_row_al`);
+  const labelEl=document.getElementById(`p${idx}_al_label`);
+  if(!alRow) return;
+  let isOut=false;
+  if(needed){
+    const alDiff=n(`p${idx}_al_diff`);
+    if(alDiff!==null) isOut = roundTo(Math.abs(alDiff),1)>TOLERANCE;
+  }
+  alRow.classList.toggle('outOfTolerance', isOut);
+  if(labelEl && needed) labelEl.textContent = isOut ? 'As Left — OUT OF TOLERANCE ⚠' : 'As Left';
+  checkToleranceBanner();
+}
+function calculateAll(){
+  const max=n('rtMax'), min=n('rtMin');
+  const avgEl=document.getElementById('rtAvg');
+  const warnEl=document.getElementById('rtRangeWarn');
+  const rangeInvalid = max!==null && min!==null && max<min;
+  const rangeValid = max!==null && min!==null && max>=min;
+  if(avgEl){
+    avgEl.value = rangeValid ? fmt((max+min)/2,1) : (rangeInvalid ? 'Max ≥ Min' : '');
+    avgEl.classList.toggle('invalid', rangeInvalid);
+  }
+  if(warnEl) warnEl.style.display=rangeInvalid?'inline':'none';
+  for(let i=1;i<=pointCount;i++){ if(document.getElementById(`p${i}_pointNo`)) calculatePoint(i); }
+  refreshOffsetWarning();
+}
+function decimalOK(el){
+  if(!el.dataset.decimals) return true;
+  if(el.disabled){ el.classList.remove('invalid','valid'); return true; }
+  const v=String(el.value||'').trim();
+  if(v===''){ el.classList.remove('invalid','valid'); return true; }
+  const d=Number(el.dataset.decimals);
+  const ok=new RegExp('^-?\\d+\\.\\d{'+d+'}$').test(v.replace(',','.'));
+  el.classList.toggle('invalid', !ok);
+  el.classList.toggle('valid', ok);
+  return ok;
+}
+function validateDecimals(show=true){
+  let bad=[];
+  document.querySelectorAll('[data-decimals]').forEach(el=>{ if(!el.disabled && !decimalOK(el)) bad.push(el); });
+  if(bad.length && show){ alert('Please correct highlighted fields — use the exact number of decimal places shown (e.g. xx.x).'); bad[0].focus(); }
+  return bad.length===0;
+}
+function validatePointsComplete(show=true){
+  document.querySelectorAll('.reqMissing').forEach(el=>el.classList.remove('reqMissing'));
+  if(pointCount===0 || !existingPointNos().size){
+    if(show) alert('Add at least one point using Quick Add Device before generating a certificate.');
+    return false;
+  }
+  let firstInvalid=null;
+  const problems=[];
+  const checkField=(id,pointNo,label)=>{
+    const el=document.getElementById(id);
+    if(!el || el.disabled) return;
+    const v=(el.value||'').trim();
+    if(!v || v==='NA'){
+      el.classList.add('reqMissing');
+      if(!firstInvalid) firstInvalid=el;
+      problems.push(`${pointNo}: ${label}`);
+    }
+  };
+  for(let i=1;i<=pointCount;i++){
+    const pointNoEl=document.getElementById(`p${i}_pointNo`);
+    if(!pointNoEl) continue;
+    const pointNo=pointNoEl.value.trim()||`Point #${i}`;
+    const mode=document.getElementById(`p${i}_descCell`)?.dataset.mode||'ambient';
+    checkField(`p${i}_location`, pointNo, 'Location');
+    if(mode==='device'){
+      checkField(`p${i}_deviceType`, pointNo, 'Device Type');
+      checkField(`p${i}_model`, pointNo, 'Model Number');
+      checkField(`p${i}_serial`, pointNo, 'Serial Number');
+    }
+    checkField(`p${i}_af_display`, pointNo, 'As Found Monitor Display');
+    checkField(`p${i}_af_ref`, pointNo, 'As Found Reference Temp');
+    checkField(`p${i}_af_offset`, pointNo, 'As Found Monitor Offset');
+    checkField(`p${i}_af_probe`, pointNo, 'As Found Ref. Probe Serial No');
+    const alRow=document.getElementById(`p${i}_row_al`);
+    const alNeeded=!(alRow && alRow.classList.contains('notNeeded'));
+    if(alNeeded){
+      checkField(`p${i}_al_display`, pointNo, 'As Left Monitor Display');
+      checkField(`p${i}_al_ref`, pointNo, 'As Left Reference Temp');
+      checkField(`p${i}_al_offset`, pointNo, 'As Left Monitor Offset');
+      checkField(`p${i}_al_probe`, pointNo, 'As Left Ref. Probe Serial No');
+    }
+  }
+  if(problems.length && show){
+    const list=problems.slice(0,20).join('\n')+(problems.length>20?`\n…and ${problems.length-20} more`:'');
+    alert(`Please complete the following required fields before generating a certificate:\n\n${list}`);
+    if(firstInvalid) firstInvalid.focus();
+  }
+  return problems.length===0;
+}
+
+// ---- Header field wiring ----
+const HEADER_IDS=['worksheetNo','jobRef','date','dateNative','site','sheetNo','sheetOf','department','model','serial','refUkas','drtSerial','rtMax','rtMin','engineer','engDate','checkedBy','checkDate'];
+function wireHeader(){
+  HEADER_IDS.forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.addEventListener('input',()=>{ decimalOK(el); calculateAll(); autosave(); autoAdvance(el); });
+    el.addEventListener('change',()=>{ calculateAll(); autosave(); });
+  });
+  document.getElementById('dateNative')?.addEventListener('change',function(){
+    const dd=document.getElementById('date'); if(dd) dd.value=displayDate(this.value);
+    syncFooterDates();
+    fillDigitalThermometers();
+    rebuildRoomThermDropdown();
+    refreshOffsetWarning();
+    autosave();
+  });
+  document.getElementById('engineer')?.addEventListener('input',updateSignatures);
+  document.getElementById('checkedBy')?.addEventListener('input',()=>{ updateSignatures(); syncFooterDates(); autosave(); });
+  document.getElementById('refUkas')?.addEventListener('change',refreshRefUkasValidity);
+}
+function updateSignatures(){
+  const eng=document.getElementById('engineer')?.value||'';
+  const engSig=document.getElementById('engSignature');
+  if(engSig) engSig.textContent=eng;
+  const chk=document.getElementById('checkedBy')?.value||'';
+  const chkSig=document.getElementById('checkSignature');
+  if(chkSig) chkSig.textContent=chk;
+}
+function autoAdvance(el){
+  if(!el.dataset.decimals) return;
+  const d=Number(el.dataset.decimals);
+  const v=String(el.value||'').replace(',','.');
+  if(new RegExp('^-?\\d+\\.\\d{'+d+'}$').test(v)){
+    const list=[...document.querySelectorAll('input,select,textarea')].filter(x=>!x.disabled && x.offsetParent!==null);
+    const i=list.indexOf(el);
+    if(i>-1 && list[i+1]) list[i+1].focus();
+  }
+}
+function syncFooterDates(){
+  const topDate=document.getElementById('date')?.value||'';
+  const de=document.getElementById('engDate'); if(de) de.value=topDate;
+  // v1.549: the checker's date stays empty until someone is actually named
+  // under "Checked By" — it used to copy the calibration date straight in,
+  // so every certificate looked as if it had been checked that same day.
+  // (On the other worksheets the checker's date has always started blank.)
+  const checker=(document.getElementById('checkedBy')?.value||'').trim();
+  const dc=document.getElementById('checkDate'); if(dc) dc.value=checker ? topDate : '';
+}
+
+// ---- Save / restore ----
+function serializeState(){
+  const header={}; HEADER_IDS.forEach(id=>header[id]=val(id));
+  const points=[];
+  for(let i=1;i<=pointCount;i++){
+    if(!document.getElementById(`p${i}_pointNo`)) continue;
+    points.push({
+      idx:i, pointNo:val(`p${i}_pointNo`),
+      mode: document.getElementById(`p${i}_descCell`)?.dataset.mode || 'ambient',
+      location:val(`p${i}_location`),
+      deviceType:val(`p${i}_deviceType`), model:val(`p${i}_model`), serial:val(`p${i}_serial`),
+      af:{display:val(`p${i}_af_display`),ref:val(`p${i}_af_ref`),offset:val(`p${i}_af_offset`),probe:val(`p${i}_af_probe`)},
+      al:{display:val(`p${i}_al_display`),ref:val(`p${i}_al_ref`),offset:val(`p${i}_al_offset`),probe:val(`p${i}_al_probe`)}
+    });
+  }
+  return {header,points,offsetsRaw:lastOffsetRaw||null};
+}
+const AUTOSAVE_KEY='monitoring_calibration_autosave';
+const AUTOSAVE_BACKUP_KEY='monitoring_calibration_autosave_backup';
+// v1.559: one autosave per TAB. It used to be a single slot, restored on
+// every page load — so opening a second Cloud Temp unit from the job list
+// brought the FIRST unit's header (serial, job) back over it.
+function tabKey(base){ return window.LabCalTabLock ? LabCalTabLock.autosaveKey(base) : base; }
+let isRestoring=false;
+function autosave(){
+  if(isRestoring) return; // never write a partial/incomplete state while a restore is still in progress
+  if(window.LabCalTabLock && LabCalTabLock.isLocked()) return; // this unit is open in another tab
+  try{
+    const json=JSON.stringify(serializeState());
+    // keep one generation back as a fallback, in case the next write is ever interrupted or corrupted
+    const prev=localStorage.getItem(tabKey(AUTOSAVE_KEY));
+    if(prev){
+      try{ JSON.parse(prev); localStorage.setItem(tabKey(AUTOSAVE_BACKUP_KEY), prev); }catch(e){ /* don't propagate an already-bad copy */ }
+    }
+    localStorage.setItem(tabKey(AUTOSAVE_KEY), json);
+    const stamp=document.getElementById('lastSavedStamp');
+    if(stamp){ stamp.textContent='Autosaved '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); stamp.style.color='#0a7a0a'; }
+  }catch(e){
+    const stamp=document.getElementById('lastSavedStamp');
+    if(stamp){ stamp.textContent='⚠ Autosave failed — use 💾 Save Backup now'; stamp.style.color='#b00000'; }
+  }
+}
+function restoreState(state){
+  isRestoring=true;
+  try{
+    // Offsets must be applied FIRST: they build the option lists for the Ref UKAS
+    // dropdown and the per-point Ref Probe dropdowns. If header/points were restored
+    // before this, setting .value on those <select> elements would silently fail
+    // (no matching <option> yet) and they'd come back empty after a reload.
+    if(state.offsetsRaw){
+      try{ applyOffsetsData(state.offsetsRaw, 'restored with saved form'); }catch(e){}
+    }
+    Object.entries(state.header||{}).forEach(([id,v])=>{ const el=document.getElementById(id); if(el) el.value=v; });
+    document.getElementById('pointsBody').innerHTML='';
+    pointCount=0;
+    (state.points||[]).forEach(p=>addPoint(p));
+    updateSignatures();
+    syncFooterDates();
+    refreshRefUkasValidity();
+    refreshOffsetWarning();
+    calculateAll();
+    updatePointStats();
+  } finally {
+    isRestoring=false;
+  }
+  autosave(); // write one clean, complete save now the restore has actually finished
+}
+function loadAutosavedState(){
+  // Try the primary autosave; if it's missing or corrupted, fall back to the
+  // one-generation-back copy rather than silently starting from a blank form.
+  const primary=localStorage.getItem(tabKey(AUTOSAVE_KEY));
+  if(primary){
+    try{ return {state:JSON.parse(primary), recovered:false}; }catch(e){}
+  }
+  const backup=localStorage.getItem(tabKey(AUTOSAVE_BACKUP_KEY));
+  if(backup){
+    try{ return {state:JSON.parse(backup), recovered:true}; }catch(e){}
+  }
+  return null;
+}
+// v1.559: an unfinished worksheet saved by ANOTHER tab, or by LabCal before
+// v1.559 (one shared slot), or before the app was closed and reopened (a new
+// tab id). Never loaded silently: the engineer is told whose it is.
+function otherAutosave(){
+  const list=[];
+  try{ const legacy=localStorage.getItem(AUTOSAVE_KEY); if(legacy) list.push({ key:AUTOSAVE_KEY, data:legacy, legacy:true }); }catch(e){}
+  if(window.LabCalTabLock) LabCalTabLock.otherAutosaves(AUTOSAVE_KEY).forEach(o=>{ if(o.key!==AUTOSAVE_KEY) list.push(o); });
+  for(const o of list){
+    try{ const st=JSON.parse(o.data); if(st && st.header) return { key:o.key, state:st, legacy:!!o.legacy }; }catch(e){}
+  }
+  return null;
+}
+function otherAutosaveFor(jobRef, serial){
+  const norm=v=>String(v||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(!norm(serial)) return null;
+  const list=[];
+  try{ const legacy=localStorage.getItem(AUTOSAVE_KEY); if(legacy) list.push({ key:AUTOSAVE_KEY, data:legacy, legacy:true }); }catch(e){}
+  if(window.LabCalTabLock) LabCalTabLock.otherAutosaves(AUTOSAVE_KEY).forEach(o=>{ if(o.key!==AUTOSAVE_KEY) list.push(o); });
+  for(const o of list){
+    try{
+      const st=JSON.parse(o.data), h=(st&&st.header)||{};
+      if(norm(h.serial)===norm(serial) && norm(h.jobRef)===norm(jobRef)) return { key:o.key, state:st, legacy:!!o.legacy };
+    }catch(e){}
+  }
+  return null;
+}
+function autosaveOwner(st){
+  const h=(st && st.header)||{};
+  return [h.serial?'serial '+h.serial:'no serial', h.jobRef?'job '+h.jobRef:'no job', h.site||''].filter(Boolean).join(' · ');
+}
+function adoptAutosave(o){
+  // move it into this tab so it is not offered again elsewhere
+  try{
+    localStorage.removeItem(o.key);
+    if(o.legacy) localStorage.removeItem(AUTOSAVE_BACKUP_KEY);
+    else localStorage.removeItem(o.key.replace(AUTOSAVE_KEY+'@', AUTOSAVE_BACKUP_KEY+'@'));
+  }catch(e){}
+}
+function sameUnitAsForm(st){
+  const norm=v=>String(v||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+  const h=(st && st.header)||{};
+  return norm(h.serial)===norm(val('serial')) && norm(h.jobRef)===norm(val('jobRef'));
+}
+function loadLocal(){
+  let result=loadAutosavedState();
+  if(!result){
+    const o=otherAutosave();
+    if(!o){ alert('No local save found.'); return; }
+    if(!confirm('No save from this tab was found.\n\nThere is an unfinished Cloud Temp worksheet from another tab or an earlier session:\n  '+autosaveOwner(o.state)+'\n\nIt may be a DIFFERENT system. Load it into this tab? Check every value afterwards.')) return;
+    adoptAutosave(o);
+    result={ state:o.state, recovered:false };
+  }
+  try{
+    restoreState(result.state);
+    if(result.recovered){
+      const statusEl=document.getElementById('offsetStatus');
+      if(statusEl){ statusEl.textContent='⚠ Last autosave was unreadable — recovered from the previous autosave instead. Please check the form carefully.'; statusEl.style.color='#b00000'; }
+    }
+  }catch(e){ alert('Saved data is corrupted.'); }
+}
+function saveBackupToFile(){
+  const state=serializeState();
+  const job=(val('jobRef')||val('serial')||'monitoring').replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,'')||'monitoring';
+  const stamp=new Date().toISOString().replace(/[:T]/g,'-').slice(0,19);
+  const filename=`LabCal-Backup-${job}-${stamp}.json`;
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  // v1.544: same route as every other file — on iPad the share sheet, where
+  // "Save to Files" can pick the folder; plain download elsewhere.
+  if(window.LabCalSave){ LabCalSave.deliver(blob, filename, {mime:'application/json'}); }
+  else {
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  }
+  const statusEl=document.getElementById('offsetStatus');
+  if(statusEl){ statusEl.textContent=`Backup file saved: ${filename}`; statusEl.style.color='#0a7a0a'; }
+}
+async function restoreBackupFromFile(ev){
+  const file=ev.target.files && ev.target.files[0]; if(!file) return;
+  try{
+    const state=JSON.parse(await file.text());
+    if(!state || !state.header) throw new Error('bad format');
+    if(!confirm('Restore this backup? This will replace everything currently on the form.')){ ev.target.value=''; return; }
+    restoreState(state);
+    autosave();
+    const statusEl=document.getElementById('offsetStatus');
+    if(statusEl){ statusEl.textContent=`Restored from backup file: ${file.name}`; statusEl.style.color='#0a7a0a'; }
+  }catch(e){
+    alert('This does not look like a valid LabCal backup file.');
+  }
+  ev.target.value='';
+}
+function startNewCalibration(){
+  if(!confirm('Start a new calibration? This clears the entire form and cannot be undone.')) return;
+  HEADER_IDS.forEach(id=>{ const el=document.getElementById(id); if(el){ el.value=''; el.classList.remove('invalid','valid'); } });
+  document.getElementById('pointsBody').innerHTML='';
+  pointCount=0;
+  localStorage.removeItem(tabKey(AUTOSAVE_KEY));
+  localStorage.removeItem(tabKey(AUTOSAVE_BACKUP_KEY));
+  const dn=document.getElementById('dateNative'); if(dn) dn.value=isoToday();
+  const dd=document.getElementById('date'); if(dd && dn) dd.value=displayDate(dn.value);
+  document.getElementById('sheetNo').value='1'; document.getElementById('sheetOf').value='1';
+  const modelEl=document.getElementById('model'); if(modelEl) modelEl.value='Cloud Temp';
+  syncFooterDates();
+  updateSignatures();
+  const statusEl=document.getElementById('offsetStatus');
+  if(statusEl){ statusEl.textContent='Offline HTML prototype · monitoring system calibration worksheet'; statusEl.style.color=''; }
+  const stamp=document.getElementById('lastSavedStamp');
+  if(stamp){ stamp.textContent=''; }
+  fillDigitalThermometers();
+  refreshOffsetWarning();
+  calculateAll();
+  updatePointStats();
+  // v1.543: clearing the form also blanked the engineer's name, which is
+  // locked to the offsets file and so could not be typed back in — the
+  // certificate then could not be generated until the page was reloaded.
+  // Put the name/signature/date from the offsets file straight back.
+  try{ lockSignatureBlock(); }catch(e){}
+  try{ if(typeof updateSignatures==='function') updateSignatures(); }catch(e){}
+}
+
+// ---- PDF export ----
+function pdfFileName(){
+  // v1.550: same format as every other certificate — job_Monitoring_serial_date,
+  // with _revN on a revised certificate. (Was MonitoringSystem_site_job_serial_date.)
+  const d=val('dateNative')||isoToday();
+  if(window.LabCalCerts && LabCalCerts.certFileName){
+    return LabCalCerts.certFileName({ jobRef:val('jobRef'), certPart:'Monitoring', serial:val('serial'), date:d,
+      rev: window.LabCalGuard ? LabCalGuard.revisionFor(val('serial')) : 1, ext:'pdf' });
+  }
+  const site=(val('site')||'site').trim().replace(/[^a-z0-9]+/gi,'_');
+  const job=(val('jobRef')||'').trim().replace(/[^a-z0-9]+/gi,'_');
+  const sn=(val('serial')||'').trim().replace(/[^a-z0-9]+/gi,'_').replace(/^_+|_+$/g,'');
+  return `MonitoringSystem_${site}${job?'_'+job:''}${sn?'_'+sn:''}_${d}.pdf`;
+}
+function fieldDisplayText(el){
+  if(el.tagName==='SELECT'){
+    if(el.classList.contains('probe')){ const p=PROBES[el.value]; return p ? p.label : selectedText(el); }
+    return selectedText(el);
+  }
+  if(el.type==='date') return displayDate(el.value);
+  return el.value;
+}
+// Some browsers (notably iPadOS/macOS Safari) serialize getComputedStyle colors using the
+// modern CSS color(...) function, which html2canvas's color parser can't read and which fails
+// PDF generation entirely. Rebuild those as plain rgb()/rgba() strings it can read.
+const _colorPropCache=new Map();
+function normalizeColorValue(prop, value){
+  if(!value || value.indexOf('color(')===-1) return value;
+  if(_colorPropCache.has(value)) return _colorPropCache.get(value);
+  let out=value;
+  const m=value.match(/color\(\s*[\w-]+\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+))?\s*\)/i);
+  if(m){
+    const r=Math.round(Math.max(0,Math.min(1,parseFloat(m[1])))*255);
+    const g=Math.round(Math.max(0,Math.min(1,parseFloat(m[2])))*255);
+    const b=Math.round(Math.max(0,Math.min(1,parseFloat(m[3])))*255);
+    const a=m[4]!==undefined?parseFloat(m[4]):1;
+    out = a<1 ? `rgba(${r}, ${g}, ${b}, ${a})` : `rgb(${r}, ${g}, ${b})`;
+  }
+  _colorPropCache.set(value, out);
+  return out;
+}
+// Before rasterizing to PDF, swap every live input/select for a plain div showing its
+// display text, styled to match exactly (border, background, font, size). This makes the
+// certificate look like a finished printed document instead of an interactive web form —
+// no input borders, no dropdown arrows, no select-box chrome.
+function swapFieldsForText(root){
+  const candidates=[...root.querySelectorAll('input, select')].filter(el=>
+    !(el.type==='file' || el.type==='checkbox' || el.id==='dateNative') && el.offsetParent!==null
+  );
+  const snapshots=candidates.map(el=>{
+    const cs=getComputedStyle(el);
+    const rect=el.getBoundingClientRect();
+    const props={};
+    for(let i=0;i<cs.length;i++){ const p=cs[i]; props[p]=normalizeColorValue(p, cs.getPropertyValue(p)); }
+    return {el, props, width:rect.width, height:rect.height, text:fieldDisplayText(el)};
+  });
+  return snapshots.map(({el,props,width,height,text})=>{
+    const div=document.createElement('div');
+    div.textContent=text;
+    for(const p in props){ try{ div.style.setProperty(p, props[p]); }catch(e){} }
+    const parentWidth=el.parentElement?el.parentElement.clientWidth:width;
+    const fillsContainer = parentWidth>0 && (width/parentWidth) > 0.9;
+    div.style.width = fillsContainer ? '100%' : width+'px';
+    div.style.height=height+'px';
+    div.style.boxSizing='border-box';
+    if(el.tagName==='SELECT' && parseFloat(props['border-top-width'])>0){ div.style.borderRadius=(height/2)+'px'; }
+    div.style.lineHeight=height+'px';
+    div.style.whiteSpace='pre';
+    div.style.overflow='hidden';
+    div.style.appearance='none';
+    div.style.cursor='default';
+    div.style.outline='none';
+    el.replaceWith(div);
+    return {div,el};
+  });
+}
+function restoreSwappedFields(swaps){ swaps.forEach(({div,el})=>{ if(div.parentNode) div.replaceWith(el); }); }
+
+// ---- Manual PDF pagination ----
+// One giant single-page capture turned out to hit a real device limit on iPad — very tall
+// canvases can render corrupted (a garbled/black band partway down) once they get big enough,
+// even with a reduced scale. The fix is to keep every captured canvas small: build each output
+// page ourselves (repeated compact banner + a whole number of channels + footer on the last
+// page) and capture each individually at a safe, bounded size. This also makes splitting a
+// channel across a page structurally impossible, since we decide the placement in code rather
+// than relying on any library heuristic.
+function buildContinuationBanner(pageNum, totalPages, headerInfo){
+  const bar=document.createElement('div');
+  bar.style.cssText='font-size:11px;font-weight:700;color:#1a3a6b;margin-bottom:6px;padding-bottom:5px;border-bottom:1.5px solid #1a3a6b;display:flex;justify-content:space-between;align-items:baseline;gap:10px';
+  const parts=[];
+  if(headerInfo.site) parts.push(headerInfo.site);
+  if(headerInfo.jobRef) parts.push('Job '+headerInfo.jobRef);
+  if(headerInfo.worksheetNo) parts.push('WS '+headerInfo.worksheetNo);
+  if(headerInfo.serial) parts.push('S/N '+headerInfo.serial);
+  const left=document.createElement('span');
+  left.style.cssText='overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0';
+  left.textContent=parts.join(' — ') || 'Monitoring System Calibration Worksheet';
+  const right=document.createElement('span');
+  right.style.cssText='flex:0 0 auto;white-space:nowrap';
+  right.textContent=`Page ${pageNum} of ${totalPages}`;
+  bar.appendChild(left); bar.appendChild(right);
+  return bar;
+}
+function buildPageFrame(width){
+  const frame=document.createElement('div');
+  frame.className='page';
+  frame.style.width=width+'px';
+  frame.style.minHeight='0';
+  frame.style.margin='0';
+  frame.style.boxShadow='none';
+  return frame;
+}
+async function capturePageFrame(frame, scale){
+  // IMPORTANT: html2pdf sizes its internal capture container from the jsPDF page size
+  // (container width = pageSize.inner.width) and hides overflow. Without these jsPDF
+  // options it defaults to A4 *portrait* (210mm) and silently clips this 287mm-wide
+  // landscape worksheet to ~73%, cutting off the right-hand columns.
+  const worker=html2pdf().set({
+    margin:0,
+    jsPDF:{unit:'mm',format:[297,210],orientation:'landscape'},
+    html2canvas:{scale,useCORS:true,backgroundColor:'#ffffff'}
+  }).from(frame);
+  await worker.toCanvas();
+  const canvas=worker.prop.canvas;
+  const dataUrl=canvas.toDataURL('image/jpeg', window.LabCalPdf ? LabCalPdf.quality() : 0.98);
+  return {dataUrl, width:canvas.width, height:canvas.height};
+}
+async function buildPaginatedPdfBlob(pageEl, scale, headerInfo){
+  const stage=document.createElement('div');
+  stage.style.cssText='position:fixed;left:-10000px;top:0;background:#fff;';
+  document.body.appendChild(stage);
+  try{
+    const frameWidthPx=pageEl.getBoundingClientRect().width;
+    const maxFrameHeightPx=frameWidthPx*(210/297)*0.985; // keep every page within a true A4-landscape aspect ratio once stretched to fill the sheet
+
+    const headerClone=pageEl.querySelector('.header').cloneNode(true);
+    const gridClone=pageEl.querySelector('.grid2').cloneNode(true);
+    const theadClone=pageEl.querySelector('#pointsTable thead').cloneNode(true);
+    const footerClone=pageEl.querySelector('.footer').cloneNode(true);
+    const bodyRows=Array.from(pageEl.querySelectorAll('#pointsTable tbody')[0].children);
+
+    // Group rows into whole channels (AF+AL pair) — the atomic unit that must never split
+    const channels=[];
+    for(let i=0;i<bodyRows.length;i+=2){ channels.push([bodyRows[i], bodyRows[i+1]].filter(Boolean)); }
+
+    // Measure the "chrome" (everything on a page besides the table body rows)
+    function measureChrome(nodes){
+      const frame=buildPageFrame(frameWidthPx);
+      nodes.forEach(n=>frame.appendChild(n));
+      const tbl=document.createElement('table'); tbl.id='pointsTable';
+      tbl.appendChild(theadClone.cloneNode(true));
+      tbl.appendChild(document.createElement('tbody'));
+      frame.appendChild(tbl);
+      stage.appendChild(frame);
+      const h=frame.getBoundingClientRect().height;
+      stage.removeChild(frame);
+      return h;
+    }
+    const page1ChromeHeight=measureChrome([headerClone.cloneNode(true), gridClone.cloneNode(true)]);
+    const continuationChromeHeight=measureChrome([buildContinuationBanner(2,2,headerInfo)]);
+    const footerFrame=buildPageFrame(frameWidthPx);
+    footerFrame.appendChild(footerClone.cloneNode(true));
+    stage.appendChild(footerFrame);
+    const footerHeight=footerFrame.getBoundingClientRect().height;
+    stage.removeChild(footerFrame);
+
+    // Measure each channel's real height (both rows together) from the live, untouched table
+    const channelHeights=channels.map(rows=>rows.reduce((sum,r)=>sum+r.getBoundingClientRect().height,0));
+
+    // Chunk channels into pages, never splitting a channel, using the right budget per page position
+    const pages=[];
+    let current=[]; let currentHeight=0; let isFirst=true;
+    channels.forEach((ch,i)=>{
+      const budget=(isFirst?page1ChromeHeight:continuationChromeHeight);
+      const avail=maxFrameHeightPx-budget;
+      if(current.length>0 && currentHeight+channelHeights[i]>avail){
+        pages.push(current); current=[]; currentHeight=0; isFirst=false;
+      }
+      current.push(i); currentHeight+=channelHeights[i];
+    });
+    if(current.length) pages.push(current);
+    if(!pages.length) pages.push([]);
+
+    // Does the footer fit on the tail of the last content page, or does it need its own page?
+    const lastPageIsFirst=(pages.length===1);
+    const lastPageBudget=maxFrameHeightPx-(lastPageIsFirst?page1ChromeHeight:continuationChromeHeight);
+    const lastPageUsed=pages[pages.length-1].reduce((s,i)=>s+channelHeights[i],0);
+    const footerFitsOnLastPage=(lastPageUsed+footerHeight<=lastPageBudget);
+    const totalPages=pages.length+(footerFitsOnLastPage?0:1);
+
+    // Render each page frame and capture it
+    const images=[];
+    for(let p=0;p<pages.length;p++){
+      const isPageFirst=(p===0);
+      const isLastContentPage=(p===pages.length-1);
+      const frame=buildPageFrame(frameWidthPx);
+      if(isPageFirst){ frame.appendChild(headerClone.cloneNode(true)); frame.appendChild(gridClone.cloneNode(true)); }
+      else { frame.appendChild(buildContinuationBanner(p+1, totalPages, headerInfo)); }
+      const tbl=document.createElement('table'); tbl.id='pointsTable';
+      tbl.appendChild(theadClone.cloneNode(true));
+      const tb=document.createElement('tbody');
+      pages[p].forEach(i=>channels[i].forEach(r=>tb.appendChild(r.cloneNode(true))));
+      tbl.appendChild(tb);
+      frame.appendChild(tbl);
+      if(isLastContentPage && footerFitsOnLastPage) frame.appendChild(footerClone.cloneNode(true));
+      stage.appendChild(frame);
+      images.push(await capturePageFrame(frame, scale));
+      stage.removeChild(frame);
+    }
+    if(!footerFitsOnLastPage){
+      const frame=buildPageFrame(frameWidthPx);
+      frame.appendChild(buildContinuationBanner(pages.length+1, totalPages, headerInfo));
+      frame.appendChild(footerClone.cloneNode(true));
+      stage.appendChild(frame);
+      images.push(await capturePageFrame(frame, scale));
+      stage.removeChild(frame);
+    }
+
+    // Assemble the final multi-page PDF from the captured page images
+    const jsPDFns=(window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : null;
+    let pdf;
+    if(jsPDFns){
+      pdf=new jsPDFns({unit:'mm',format:[297,210],orientation:'landscape'});
+      images.forEach((img,i)=>{
+        if(i>0) pdf.addPage();
+        const hMm=Math.min(210, 297*(img.height/img.width));
+        pdf.addImage(img.dataUrl,'JPEG',0,0,297,hMm);
+      });
+    } else {
+      // Fall back to html2pdf's own internal jsPDF instance if the standalone constructor isn't exposed globally
+      const firstWorker=html2pdf().set({jsPDF:{unit:'mm',format:[297,210],orientation:'landscape'},image: window.LabCalPdf ? LabCalPdf.imageOpts() : {type:'jpeg',quality:0.98}}).from(buildPageFrame(frameWidthPx));
+      await firstWorker.toPdf();
+      pdf=firstWorker.prop.pdf;
+      images.forEach((img,i)=>{
+        if(i>0) pdf.addPage();
+        const hMm=Math.min(210, 297*(img.height/img.width));
+        pdf.addImage(img.dataUrl,'JPEG',0,0,297,hMm);
+      });
+      if(pdf.internal.getNumberOfPages()>images.length){ pdf.deletePage(1); } // drop the blank placeholder page this fallback path created
+    }
+    return pdf.output('blob');
+  } finally {
+    stage.remove();
+  }
+}
+// A certificate was produced for this unit — tick it off the jobsheet
+// worklist so the calibration page shows what's left to do.
+// Keep a copy of the certificate in the day list on the calibration page.
+// Purely additive — the file has already been saved or shared by this point,
+// so a storage failure here can never lose the engineer their work.
+function fileCertificateForToday(blob, filename){
+  if(!blob) return;
+  const hint=document.getElementById('pdfNameHint');
+  const warn=msg=>{ if(hint) hint.textContent = 'PDF saved, but ' + msg; console.warn(msg); };
+  if(!window.LabCalCerts){ warn('labcal_certs.js did not load, so it is not on the job list.'); return; }
+  if(!LabCalCerts.supported()){ warn('this browser will not store it, so it will not appear on the job list.'); return; }
+  const v=id=>{ const el=document.getElementById(id); return el?el.value:''; };
+  let sum=null; try{ sum=certificateSummary(); }catch(e){}
+  const filing = LabCalCerts.add(blob, {
+    filename, sheet:'cloud_temp',
+    // v1.545: no certificate number on this sheet — the old value here was
+    // the sheet number ("1"). The summary label is shown instead.
+    certRef:(v('worksheetNo')||'').trim(), summary: sum ? sum.label : '', summaryTone: sum ? sum.tone : '', summaryShort: sum ? sum.short : '',
+    serial:v('serial'), model:v('model'),
+    site:v('site'), jobRef:v('jobRef'),
+    // the unit this worksheet was opened for — the link that survives a
+    // corrected serial, a repeated certificate number or a mistyped job ref
+    unitUid: (window.LabCalJobsheet && LabCalJobsheet.link && (LabCalJobsheet.link()||{}).uid) || ''
+  }).then(id=>{
+    if(!id) warn('it could not be added to the job list' + (LabCalCerts.lastError()? ' — '+LabCalCerts.lastError() : '') + '.');
+    return id;
+  });
+
+  // Filing must never hold up the PDF. If storage does not answer, carry on
+  // and say so — the engineer can attach it later with Find… on the unit.
+  return Promise.race([
+    filing,
+    new Promise(resolve => setTimeout(() => {
+      warn('certificate storage did not respond, so it may not be on the job list. Use Find… on the unit if it is missing.');
+      resolve(null);
+    }, 2500))
+  ]);
+}
+// ---------------------------------------------------------------------
+// Two-way link with the job list. The worksheet knows which unit it was
+// opened for, so a serial corrected here goes back to the list rather than
+// leaving the two disagreeing.
+// ---------------------------------------------------------------------
+function jobLinkFields(){
+  const v=id=>{ const el=document.getElementById(id); return el?String(el.value||'').trim():''; };
+  return { model:v('model'), serial:v('serial'), location:v('department') };
+}
+// v1.543: the More… button called toggleMoreTools(), which this page never
+// had (it was added to the other worksheets only), so tapping it threw an
+// error and Excel, Print, Load offsets, Load saved, Backup etc. were
+// unreachable. Same behaviour as the other worksheets.
+function toggleMoreTools(){
+  const box=document.getElementById('moreTools');
+  const btn=document.getElementById('moreToolsBtn');
+  if(!box) return;
+  const open = box.style.display === 'none';
+  box.style.display = open ? 'inline' : 'none';
+  if(btn) btn.textContent = open ? 'Fewer' : 'More…';
+  try{ localStorage.setItem('labcal.ui.moreTools', open ? '1' : '0'); }catch(e){}
+}
+(function restoreMoreTools(){
+  try{
+    if(localStorage.getItem('labcal.ui.moreTools') !== '1') return;
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', toggleMoreTools);
+    else toggleMoreTools();
+  }catch(e){}
+})();
+
+function saveToJobList(silent){
+  if(!window.LabCalJobsheet || typeof LabCalJobsheet.syncFromWorksheet !== 'function'){
+    if(!silent) alert('labcal_jobsheet.js is out of date on this device.\n\nOpen the LabCal home page while online, tap "Refresh offline copy", then close every tab of this site and reopen.');
+    return null;
+  }
+  const l = LabCalJobsheet.link && LabCalJobsheet.link();
+  if(!l || !l.serial){
+    if(!silent) alert('This worksheet was not opened from a job list, so there is nothing to update.\n\nOpen the unit from the calibration page to link them.');
+    return null;
+  }
+  const d = LabCalJobsheet.syncFromWorksheet(jobLinkFields());
+  if(!silent){
+    const btn=document.getElementById('syncJobBtn');
+    if(btn){
+      const was=btn.textContent;
+      btn.textContent = d ? 'Saved to job list ✓' : 'Unit not found on the list';
+      setTimeout(()=>{ btn.textContent=was; }, 2200);
+    }
+  }
+  return d;
+}
+// v1.545: what this certificate covers, read from the worksheet itself —
+// devices (distinct point numbers), channels, and how many channels needed
+// an As Left (the worksheet's own .notNeeded decision). This sheet has no
+// certificate number, so this summary is what the calibration page and the
+// job summary show for it instead of the sheet number ("1").
+function certificateSummary(){
+  const bases=new Set(); let channels=0, adjusted=0;
+  document.querySelectorAll('#pointsBody tr[id$="_row_af"]').forEach(tr=>{
+    const m=tr.id.match(/^p(\d+)_row_af$/); if(!m) return;
+    const i=m[1];
+    const pn=document.getElementById(`p${i}_pointNo`); if(!pn) return;
+    channels++;
+    bases.add(pointBaseNo(pn.value)||`__row${i}`);
+    const al=document.getElementById(`p${i}_row_al`);
+    if(al && !al.classList.contains('notNeeded')) adjusted++;
+  });
+  const devices=bases.size;
+  const system=[val('model'), val('serial')].map(x=>String(x||'').trim()).filter(Boolean).join(' ');
+  const counts=`${devices} device${devices===1?'':'s'} / ${channels} ch`;
+  const result=adjusted ? `${adjusted} adjusted` : 'all in tolerance';
+  return {
+    devices, channels, adjusted,
+    tone: adjusted ? 'adjusted' : 'ok',
+    label: [system, counts, result].filter(Boolean).join(' · '),
+    // v1.549: shown next to "Calibrated" on the job summary
+    short: `${channels} ch${adjusted ? ', '+adjusted+' adj.' : ''}`
+  };
+}
+function markJobsheetDone(){
+  if(!window.LabCalJobsheet) return;
+  const serialEl=document.getElementById('serial');
+  if(!serialEl || !serialEl.value) return;
+  let short='';
+  try{ short=certificateSummary().short; }catch(e){}
+  // v1.549: the Certificate column shows the Worksheet No (if any); the
+  // channel count goes with the status instead.
+  LabCalJobsheet.markDone(serialEl.value, (val('worksheetNo')||'').trim(), { detail: short });
+}
+// v1.543: text (vector) certificate — real text drawn with jsPDF, like the
+// other worksheets: small, sharp and searchable. The same checks as before
+// run first (in generatePDF); any failure falls back to the image version.
+async function generateVectorPDF(){
+  const filename=pdfFileName();
+  const btn=document.getElementById('generateBtn');
+  const originalLabel=btn.textContent;
+  btn.disabled=true; btn.textContent='Generating PDF…';
+  try{
+    const blob=LabCalVectorPdf.blobCloudTemp({ tolerance: TOLERANCE });
+    saveToJobList(true);
+    await fileCertificateForToday(blob, filename);
+    markJobsheetDone();
+    if(window.LabCalSave){ await LabCalSave.deliver(blob, filename); }
+    else { downloadBlob(blob,filename); }
+    return true;
+  }catch(err){
+    console.error('Vector PDF failed, falling back to the image version:', err);
+    alert('The text-based certificate could not be produced, so the standard one was used instead.\n\n'+(err&&err.message?err.message:err));
+    return false;
+  }finally{
+    btn.disabled=false; btn.textContent=originalLabel;
+    refreshOffsetWarning();
+  }
+}
+async function generatePDF(){
+  if(!offsetsAreCurrent()){ alert('The digital reference thermometer / probe offsets are not currently valid (missing, not loaded, or expired). Load a current offsets file before generating a certificate.'); return; }
+  if(refUkasExpired()){ refreshRefUkasValidity(); alert('The selected room temperature thermometer (Ref UKAS) calibration has expired. Choose a current one, or update it in the Offset Manager, before generating a certificate.'); document.getElementById('refUkas')?.focus(); return; }
+  if(!validateDecimals(true)) return;
+  if(!validatePointsComplete(true)) return;
+  if(anyPointOutOfTolerance()){ alert('One or more points are still outside tolerance after adjustment (As Left difference exceeds ±0.5°C). Fix the highlighted points before generating a certificate.'); return; }
+  // v1.550: validate first, then make sure the certificate is filed against
+  // the right unit and is named as a revision if the unit already has one.
+  if(window.LabCalGuard){
+    const gv=id=>{ const el=document.getElementById(id); return el?String(el.value||'').trim():''; };
+    const g=await LabCalGuard.beforeGenerate({ sheet:'cloud_temp', serial:gv('serial'), jobRef:gv('jobRef'), certRef:gv('worksheetNo') });
+    if(!g.ok) return;
+  }
+  if(window.LabCalPdf && LabCalPdf.style && LabCalPdf.style()==='text'
+     && window.LabCalVectorPdf && window.LabCalVectorPdf.blobCloudTemp && window.jspdf){
+    if(await generateVectorPDF()) return;
+  }
+  const btn=document.getElementById('generateBtn');
+  const originalLabel=btn.textContent;
+  btn.disabled=true; btn.textContent='Generating PDF…';
+  document.body.classList.add('printMode');
+  const wrapEl=document.getElementById('pageScaleWrap');
+  const pageElForScale=document.getElementById('page');
+  if(pageElForScale) pageElForScale.style.transform='none';
+  if(wrapEl){ wrapEl.style.width='auto'; wrapEl.style.height='auto'; wrapEl.style.margin=''; }
+  await new Promise(r=>setTimeout(r,30));
+  const pageEl=document.getElementById('page');
+  const filename=pdfFileName();
+  // Capture these now — swapFieldsForText below replaces the input elements (and their IDs)
+  // with plain display divs, so val(id) would return nothing if read any later than this.
+  const headerInfo={site:val('site'), jobRef:val('jobRef'), worksheetNo:val('worksheetNo'), serial:val('serial')};
+  let swaps=[];
+  try{
+    swaps=swapFieldsForText(pageEl);
+    // Each page is captured separately now and is at most one A4-landscape sheet, so the
+    // resolution budget only needs to cover a single page — keeping every canvas small and
+    // safely away from the size/memory limit that was corrupting the old single giant page.
+    const maxSafeCanvasPx=3200;
+    // Capped both by what the canvas can safely handle AND by the shared
+    // render-quality setting (see labcal_pdf.js).
+    const qualityScale = window.LabCalPdf ? LabCalPdf.scale() : 2;
+    const scale=Math.min(qualityScale, maxSafeCanvasPx/(pageEl.getBoundingClientRect().width*(210/297)));
+    const blob=await buildPaginatedPdfBlob(pageEl, Math.max(1, scale), headerInfo);
+    restoreSwappedFields(swaps); swaps=[];
+    document.body.classList.remove('printMode');
+    // Desktop save dialog where it exists; on iPad there is no such dialog, so
+    // the file goes to the iOS share sheet where "Save to Files" can pick the
+    // folder. Plain download everywhere else. See labcal_save.js.
+    // File it first and wait for the write to commit — sharing waits on the
+    // engineer, and leaving the page during that aborts the storage write.
+    saveToJobList(true);
+    await fileCertificateForToday(blob, filename);
+    markJobsheetDone();
+    if(window.LabCalSave){ await LabCalSave.deliver(blob, filename); }
+    else { downloadBlob(blob,filename); }
+  }catch(err){
+    alert('PDF generation failed: '+(err && err.message ? err.message : err));
+  }finally{
+    if(swaps.length) restoreSwappedFields(swaps);
+    document.body.classList.remove('printMode');
+    btn.disabled=false; btn.textContent=originalLabel;
+    refreshOffsetWarning();
+    fitPageToViewport();
+  }
+}
+function downloadBlob(blob,filename){
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+
+// ---- Excel export ----
+function selectedText(sel){ return sel && sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : (sel?sel.value:''); }
+function excelFileName(){ return pdfFileName().replace(/\.pdf$/,'.xlsx'); }
+function buildExcelWorkbook(){
+  const header=[['Field','Value']];
+  const push=(label,value)=>header.push([label,value==null?'':value]);
+  push('Worksheet No', val('worksheetNo'));
+  push('Job Reference No', val('jobRef'));
+  push('Date', val('date'));
+  push('Site', val('site'));
+  push('Sheet', val('sheetNo')+' of '+val('sheetOf'));
+  push('Department', val('department'));
+  push('System Model', val('model'));
+  push('System Serial No', val('serial'));
+  push('Ref UKAS', val('refUkas'));
+  push('Digital Reference Thermometer Serial No', val('drtSerial'));
+  push('Room Temp Max', val('rtMax'));
+  push('Room Temp Min', val('rtMin'));
+  push('Room Temp Average', val('rtAvg'));
+  push('Engineer Name', val('engineer'));
+  push('Engineer Date', val('engDate'));
+  push('Checked By', val('checkedBy'));
+  push('Checked Date', val('checkDate'));
+
+  const table=[['Point No','Probe Type','Location','Device Type','Model Number','Serial Number','Phase','Monitor Display','Reference Temp','Probe Correction','Reference + Correction','Difference Ref vs Display','Monitor Offset','Ref Probe Serial No']];
+  for(let i=1;i<=pointCount;i++){
+    if(!document.getElementById(`p${i}_pointNo`)) continue;
+    const mode=document.getElementById(`p${i}_descCell`)?.dataset.mode || 'ambient';
+    const probeTypeText = mode==='device' ? 'Internal Probe' : 'Room Ambient Temperature';
+    ['af','al'].forEach(phase=>{
+      table.push([
+        val(`p${i}_pointNo`), probeTypeText, val(`p${i}_location`),
+        val(`p${i}_deviceType`), val(`p${i}_model`), val(`p${i}_serial`),
+        phase==='af'?'As Found':'As Left',
+        val(`p${i}_${phase}_display`), val(`p${i}_${phase}_ref`), val(`p${i}_${phase}_corr`),
+        val(`p${i}_${phase}_refcorr`), val(`p${i}_${phase}_diff`), val(`p${i}_${phase}_offset`),
+        selectedText(document.getElementById(`p${i}_${phase}_probe`))
+      ]);
+    });
+  }
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(header), 'Header');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(table), 'Points');
+  return wb;
+}
+function findProbeIdByLabel(text){
+  if(!text) return '';
+  const match=PROBE_LIST.find(p=>p.shortLabel===text || p.label===text);
+  return match?match.id:'';
+}
+async function importExcelFile(ev){
+  const file=ev.target.files && ev.target.files[0]; if(!file) return;
+  try{
+    const data=await file.arrayBuffer();
+    const wb=XLSX.read(data,{type:'array'});
+    if(!wb.SheetNames.includes('Header') || !wb.SheetNames.includes('Points')) throw new Error('Missing sheets');
+    const headerRows=XLSX.utils.sheet_to_json(wb.Sheets['Header'],{header:1});
+    const fieldMap={};
+    headerRows.forEach(r=>{ if(r && r[0]!==undefined && r[0]!=='' && r[0]!=='Field'){ fieldMap[String(r[0]).trim()]=r[1]!==undefined?String(r[1]):''; } });
+    const pointRows=XLSX.utils.sheet_to_json(wb.Sheets['Points'],{header:1});
+    const dataRows=pointRows.slice(1).filter(r=>r && r[0]);
+    if(!Object.keys(fieldMap).length && !dataRows.length) throw new Error('No data found');
+    if(!Object.keys(PROBES).length){
+      if(!confirm('No probe offsets are loaded yet, so Ref. Probe Serial No selections can\'t be matched up. Import anyway (you can pick probes manually afterwards), or cancel and load offsets first?')) { ev.target.value=''; return; }
+    }
+    applyImportedFields(fieldMap, dataRows);
+    calculateAll();
+    const statusEl=document.getElementById('offsetStatus');
+    if(statusEl){ statusEl.textContent='Imported from Excel file: '+file.name; statusEl.style.color='#0a7a0a'; }
+  }catch(e){
+    alert('Cannot read this Excel file. Please choose an .xlsx file exported from this worksheet\'s "Generate Excel" button.');
+  }
+  ev.target.value='';
+}
+function applyImportedFields(fieldMap, dataRows){
+  const setVal=(id,v)=>{ if(v==null) return; const el=document.getElementById(id); if(el) el.value=v; };
+  setVal('worksheetNo', fieldMap['Worksheet No']);
+  setVal('jobRef', fieldMap['Job Reference No']);
+  if(fieldMap['Date']){
+    const iso=dateForFile(fieldMap['Date']);
+    if(/^\d{4}-\d{2}-\d{2}$/.test(iso)){
+      const dn=document.getElementById('dateNative'); if(dn) dn.value=iso;
+      const dd=document.getElementById('date'); if(dd) dd.value=displayDate(iso);
+    }
+  }
+  setVal('site', fieldMap['Site']);
+  const sheetParts=String(fieldMap['Sheet']||'').split(/\s+of\s+/i);
+  if(sheetParts.length===2){ setVal('sheetNo', sheetParts[0].trim()); setVal('sheetOf', sheetParts[1].trim()); }
+  setVal('department', fieldMap['Department']);
+  setVal('model', fieldMap['System Model']);
+  setVal('serial', fieldMap['System Serial No']);
+  setVal('refUkas', fieldMap['Ref UKAS']);
+  setVal('rtMax', fieldMap['Room Temp Max']);
+  setVal('rtMin', fieldMap['Room Temp Min']);
+  setVal('engineer', fieldMap['Engineer Name']);
+  setVal('checkedBy', fieldMap['Checked By']);
+
+  document.getElementById('pointsBody').innerHTML='';
+  pointCount=0;
+  const byPoint=new Map();
+  dataRows.forEach(r=>{
+    const [pointNo, probeType, location, deviceType, model, serial, phase, display, ref, corr, refcorr, diff, offset, probeLabel]=r;
+    if(!pointNo) return;
+    const key=String(pointNo);
+    if(!byPoint.has(key)) byPoint.set(key,{ pointNo:key, location, deviceType, model, serial, mode: probeType==='Internal Probe'?'device':'ambient', af:{}, al:{} });
+    const entry=byPoint.get(key);
+    const phaseKey=String(phase||'').toLowerCase().includes('left') ? 'al' : 'af';
+    entry[phaseKey]={
+      display: display!=null?String(display):'',
+      ref: ref!=null?String(ref):'',
+      offset: offset!=null?String(offset):'',
+      probe: findProbeIdByLabel(probeLabel)
+    };
+  });
+  byPoint.forEach(p=>addPoint(p));
+  updateSignatures();
+  syncFooterDates();
+}
+async function generateExcel(){
+  if(!offsetsAreCurrent()){ alert('The digital reference thermometer / probe offsets are not currently valid (missing, not loaded, or expired). Load a current offsets file before generating a certificate.'); return; }
+  if(refUkasExpired()){ refreshRefUkasValidity(); alert('The selected room temperature thermometer (Ref UKAS) calibration has expired. Choose a current one, or update it in the Offset Manager, before generating a certificate.'); document.getElementById('refUkas')?.focus(); return; }
+  if(!validateDecimals(true)) return;
+  if(!validatePointsComplete(true)) return;
+  if(anyPointOutOfTolerance()){ alert('One or more points are still outside tolerance after adjustment (As Left difference exceeds ±0.5°C). Fix the highlighted points before generating a certificate.'); return; }
+  const btn=document.getElementById('generateExcelBtn');
+  const originalLabel=btn.textContent;
+  btn.disabled=true; btn.textContent='Generating Excel…';
+  const filename=excelFileName();
+  try{
+    const wb=buildExcelWorkbook();
+    const wbout=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+    const blob=new Blob([wbout],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    // Desktop save dialog where it exists; on iPad there is no such dialog, so
+    // the file goes to the iOS share sheet where "Save to Files" can pick the
+    // folder. Plain download everywhere else. See labcal_save.js.
+    if(window.LabCalSave){ await LabCalSave.deliver(blob, filename); }
+    else { downloadBlob(blob,filename); }
+  }catch(err){
+    alert('Excel generation failed: '+(err && err.message ? err.message : err));
+  }finally{
+    btn.disabled=false; btn.textContent=originalLabel;
+    refreshOffsetWarning();
+  }
+}
+
+// ---- Fit-to-screen scaling (so the wide certificate fits portrait/narrow screens without manual zoom) ----
+function fitPageToViewport(){
+  const page=document.getElementById('page');
+  const wrap=document.getElementById('pageScaleWrap');
+  if(!page||!wrap) return;
+  page.style.transform='none';
+  wrap.style.width='auto';
+  wrap.style.height='auto';
+  const naturalWidth=page.offsetWidth;
+  const naturalHeight=page.offsetHeight;
+  const available=wrap.parentElement ? wrap.parentElement.clientWidth : window.innerWidth;
+  const scale=Math.min(1, (available-4)/naturalWidth);
+  if(scale<0.999){
+    page.style.transformOrigin='top left';
+    page.style.transform=`scale(${scale})`;
+    wrap.style.width=(naturalWidth*scale)+'px';
+    wrap.style.height=(naturalHeight*scale)+'px';
+    wrap.style.margin='10px auto';
+  } else {
+    page.style.transform='none';
+    wrap.style.width='auto';
+    wrap.style.height='auto';
+    wrap.style.margin='';
+  }
+}
+let fitPageTimer=null;
+function scheduleFitPage(){
+  clearTimeout(fitPageTimer);
+  fitPageTimer=setTimeout(fitPageToViewport,120);
+}
+window.addEventListener('resize', scheduleFitPage);
+window.addEventListener('orientationchange', ()=>setTimeout(fitPageToViewport,350));
+window.addEventListener('beforeprint', fitPageToViewport); // CSS forces transform:none for print, this just keeps wrap tidy
+window.addEventListener('afterprint', scheduleFitPage);
+
+// ---- Init ----
+wireHeader();
+document.addEventListener('input',e=>{ if(e.target.classList && e.target.classList.contains('reqMissing') && (e.target.value||'').trim()) e.target.classList.remove('reqMissing'); });
+document.addEventListener('change',e=>{ if(e.target.classList && e.target.classList.contains('reqMissing') && (e.target.value||'').trim()) e.target.classList.remove('reqMissing'); });
+document.getElementById('qaPointNo')?.addEventListener('input',function(){ this.value=this.value.replace(/\D/g,'').slice(0,3); });
+document.getElementById('qaPointNo')?.addEventListener('blur',function(){ this.value=padPointNo(this.value); });
+document.getElementById('dateNative')?.addEventListener('click',function(){ if(this.showPicker){ try{ this.showPicker(); }catch(e){} } });
+document.getElementById('dateNative')?.addEventListener('focus',function(){ if(this.showPicker){ try{ this.showPicker(); }catch(e){} } });
+(function init(){
+  restoreVaultOffsets();
+  const fromList=applyJobsheetHandoff();
+  if(window.LabCalOffsets){ LabCalOffsets.onChange(()=>{ restoreVaultOffsets(); }); }
+  const dn=document.getElementById('dateNative');
+  if(dn && !dn.value){ dn.value=isoToday(); document.getElementById('date').value=displayDate(dn.value); }
+  syncFooterDates();
+  let result=loadAutosavedState();
+  // v1.559: arriving from the job list, this tab's save is only put back if
+  // it is the SAME system; otherwise the unit just opened starts clean.
+  if(result && fromList && !sameUnitAsForm(result.state)) result=null;
+  if(!result && fromList){
+    // The same system may be half-done in another tab (which this page now
+    // takes over and locks): bring its readings here rather than start empty.
+    const o=otherAutosaveFor(val('jobRef'), val('serial'));
+    if(o){
+      adoptAutosave(o);
+      result={ state:o.state, recovered:false };
+      setTimeout(()=>{ const el=document.getElementById('offsetStatus'); if(el){ el.textContent='Readings for '+autosaveOwner(o.state)+' brought over from the tab it was open in.'; el.style.color='#7a4c06'; } }, 0);
+    }
+  }
+  if(!result && !fromList){
+    // No save for this tab (new tab, or the app was closed and reopened):
+    // offer an unfinished worksheet from elsewhere — never silently.
+    const o=otherAutosave();
+    if(o && confirm('An unfinished Cloud Temp worksheet was found from another tab or an earlier session:\n  '+autosaveOwner(o.state)+'\n\nOpen it in this tab?\n\nCancel = start with an empty worksheet (the unfinished one is kept).')){
+      adoptAutosave(o);
+      result={ state:o.state, recovered:false };
+    }
+  }
+  if(result){
+    try{
+      restoreState(result.state);
+      if(result.recovered){
+        const statusEl=document.getElementById('offsetStatus');
+        if(statusEl){ statusEl.textContent='⚠ Last autosave was unreadable — recovered from the previous autosave instead. Please check the form carefully.'; statusEl.style.color='#b00000'; }
+      }
+      return;
+    }catch(e){}
+  }
+  calculateAll();
+})();
+// v1.559: one unit in one tab — see labcal_tablock.js
+if(window.LabCalTabLock) LabCalTabLock.init({ sheet:'cloud_temp', identity:()=>({ jobRef:val('jobRef'), serial:val('serial') }) });
+// v1.563: ← Back / Home on the toolbar (installed-app mode has no browser Back).
+// Before leaving, this tab's autosave is written and checked — it is what
+// brings the readings back when Cloud Temp is opened again in this tab.
+if(window.LabCalNav) LabCalNav.init({
+  save:()=>{ autosave(); try{ return localStorage.getItem(tabKey(AUTOSAVE_KEY))===JSON.stringify(serializeState()); }catch(e){ return false; } },
+  unsavedMessage:'The readings on this worksheet could NOT be saved on this iPad (storage problem).\n\nUse More… → Save Backup first, or they may be lost.\n\nOK = leave anyway.  Cancel = stay here.'
+});
+fitPageToViewport();
+</script>
+</body>
+</html>
