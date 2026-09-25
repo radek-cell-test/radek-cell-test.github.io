@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="LabCal">
+<meta name="theme-color" content="#dfe6ee">
+<title>LabCal — Tools &amp; Utilities</title>
+<script src="labcal_testmode.js"></script>
+<style>
+:root{
+  --bg:#dfe6ee;
+  --bg2:#eef3f7;
+  --panel:#ffffff;
+  --panel-hi:#eef8f6;
+  --border:#c9d4dd;
+  --border-soft:#d3dce4;
+  --ink:#12161c;
+  --muted:#57626d;
+  --muted-dim:#828d98;
+  --cyan:#0f9488;
+  --cyan-dim:#4fb3a8;
+  --amber:#a9690a;
+  --amber-dim:#e3c496;
+  --green:#1f9d55;
+  --mono:ui-monospace,"SF Mono","IBM Plex Mono",Consolas,"Roboto Mono",monospace;
+  --sans:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:
+    radial-gradient(circle at 15% 0%, var(--bg2) 0%, transparent 45%),
+    radial-gradient(circle at 100% 20%, #e6edf3 0%, transparent 40%),
+    var(--bg);
+  color:var(--ink);
+  font-family:var(--sans);
+  min-height:100vh;
+  min-height:100dvh;
+  -webkit-font-smoothing:antialiased;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.gridlines{
+  position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(rgba(20,30,40,.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(20,30,40,.05) 1px, transparent 1px);
+  background-size:34px 34px;
+  mask-image:linear-gradient(to bottom, black, transparent 85%);
+}
+
+.wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:0 28px 80px}
+@media (max-width:620px){.wrap{padding:0 18px 56px}}
+
+header{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:34px 0 22px;border-bottom:1px solid var(--border-soft);
+  flex-wrap:wrap;gap:16px;
+}
+.wordmark{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.wordmark .mark{font-family:var(--mono);font-weight:700;font-size:23px;letter-spacing:.5px;color:var(--ink)}
+.wordmark .tag{
+  font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:1.4px;
+  color:#fff;background:var(--cyan);padding:3px 7px;border-radius:2px;
+  text-transform:uppercase;
+}
+.brandcol{display:flex;flex-direction:column;gap:10px}
+.labcold-logo{font-family:var(--sans);font-size:24px;font-weight:900;letter-spacing:1px;color:var(--ink)}
+.labcold-logo small{display:block;font-size:8.5px;letter-spacing:.4px;font-weight:700;background:#2a2f35;color:#fff;width:max-content;padding:1px 8px;margin-left:30px}
+.hstat{text-align:right;font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.7}
+.hstat b{color:var(--ink);font-weight:600}
+.hstat .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:5px;box-shadow:0 0 0 3px rgba(63,200,121,.18)}
+@media (max-width:480px){
+  header{padding:22px 0 18px;gap:10px}
+  .wordmark .mark{font-size:19px}
+  .labcold-logo{font-size:19px}
+  .labcold-logo small{margin-left:24px}
+  .hstat{text-align:left}
+}
+
+.backlink{
+  display:inline-flex;align-items:center;gap:6px;margin:26px 0 6px;
+  font-family:var(--mono);font-size:11.5px;font-weight:600;letter-spacing:.3px;
+  color:var(--muted);text-decoration:none;
+}
+.backlink:hover{color:var(--cyan)}
+.backlink svg{width:14px;height:14px}
+
+.hero{padding:10px 0 30px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--cyan);text-transform:uppercase;margin:0 0 14px}
+h1{font-size:clamp(28px,4vw,42px);line-height:1.1;margin:0 0 14px;font-weight:700;letter-spacing:-.5px;max-width:16ch}
+.lede{color:var(--muted);font-size:16px;line-height:1.6;max-width:56ch;margin:0}
+@media (max-width:620px){.lede{font-size:15px}}
+
+.section-label{
+  display:flex;align-items:center;gap:14px;margin:8px 0 22px;
+  font-family:var(--mono);font-size:12px;letter-spacing:1.5px;color:var(--muted-dim);text-transform:uppercase;
+}
+.section-label::after{content:"";flex:1;height:1px;background:var(--border-soft)}
+
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media (max-width:920px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:620px){.grid{grid-template-columns:1fr;gap:12px}}
+
+.card{
+  position:relative;display:flex;flex-direction:column;
+  background:var(--panel);border:1px solid var(--border);border-radius:8px;
+  padding:20px 20px 16px;min-height:230px;
+  text-decoration:none;color:inherit;
+  box-shadow:0 1px 3px rgba(20,30,40,.06);
+  transition:transform .16s ease, border-color .16s ease, background .16s ease, box-shadow .16s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+@media (max-width:620px){.card{min-height:0;padding:18px}}
+.card.active:hover{transform:translateY(-3px);border-color:var(--cyan-dim);background:var(--panel-hi);box-shadow:0 10px 22px rgba(20,30,40,.10)}
+.card.active:active{transform:translateY(0);background:var(--panel-hi)}
+.card.active:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.card.planned{border-style:dashed;opacity:.75;cursor:default;box-shadow:none}
+
+.card-top{display:flex;justify-content:space-between;align-items:flex-start}
+.code{font-family:var(--mono);font-size:11px;color:var(--muted-dim);letter-spacing:1px}
+.icon{width:30px;height:30px;color:var(--muted)}
+.card.active .icon{color:var(--cyan)}
+
+.stamp{
+  font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:1px;
+  padding:3px 8px;border-radius:2px;transform:rotate(4deg);white-space:nowrap;
+}
+.stamp.ready{border:1.5px solid var(--green);color:var(--green)}
+.stamp.dev{border:1.5px dashed var(--amber);color:var(--amber)}
+
+.card h3{font-size:17px;margin:16px 0 6px;font-weight:650;letter-spacing:-.2px}
+.card p{font-size:13px;color:var(--muted);line-height:1.55;margin:0;flex:1}
+
+.card-foot{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-top:16px;padding-top:12px;border-top:1px solid var(--border-soft);
+  font-family:var(--mono);font-size:10.5px;color:var(--muted-dim);
+}
+.open{display:flex;align-items:center;gap:5px;color:var(--cyan);font-weight:600}
+.card.active:hover .open{gap:8px}
+.open svg{width:13px;height:13px;transition:transform .16s ease}
+
+.card.addnew{
+  align-items:center;justify-content:center;text-align:center;
+  border-style:dashed;color:var(--muted-dim);min-height:230px;
+}
+@media (max-width:620px){.card.addnew{min-height:110px;padding:24px 18px}}
+.card.addnew .icon{width:26px;height:26px;margin-bottom:10px;color:var(--muted-dim)}
+.card.addnew span{font-family:var(--mono);font-size:11px;letter-spacing:.5px}
+
+footer{
+  margin-top:56px;padding-top:18px;border-top:1px solid var(--border-soft);
+  display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;
+  font-family:var(--mono);font-size:10.5px;color:var(--muted-dim);
+}
+
+@media (prefers-reduced-motion:reduce){.card{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="gridlines"></div>
+
+<div class="wrap">
+
+  <header>
+    <div class="brandcol">
+      <div class="wordmark">
+        <span class="mark">LABCAL</span>
+        <span class="tag">Calibration Suite</span>
+      </div>
+      <div class="labcold-logo">❄ LABCOLD<small>medical &amp; scientific refrigeration</small></div>
+    </div>
+    <div class="hstat" id="hstat">
+      <div><span class="dot"></span><b id="toolCount">–</b> tools · <b id="activeCount">–</b> active</div>
+      <div id="todayDate">—</div>
+    </div>
+  </header>
+
+  <a class="backlink" href="index.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Back to LabCal home
+  </a>
+
+  <div class="hero">
+    <p class="eyebrow">Section 02 · Tools &amp; utilities</p>
+    <h1>Engineer tools &amp; utilities.</h1>
+    <p class="lede">Supporting tools for the lab and site work — data review, reporting and document handling. Everything runs on this device, fully offline.</p>
+  </div>
+
+  <div class="section-label">TL · 01–02 — select a tool</div>
+
+  <div class="grid" id="grid"></div>
+
+  <footer>
+    <span>LabCal Calibration Suite · offline worksheet toolkit</span>
+    <span id="footYear">v1.562</span>
+  </footer>
+
+</div>
+
+<script>
+// ---------------------------------------------------------------------
+// Engineer tools & utilities. Add a new tool by adding an object here with
+// status:'active' and the correct href, then add the same href to
+// APP_SHELL in sw.js and OFFLINE_PAGES in index.html.
+// ---------------------------------------------------------------------
+const tools = [
+  {
+    code:'TL-01',
+    title:'Data Logger Viewer',
+    desc:'Reads Labcold controller logs (YYMMDD.CSV) straight from the customer folder — day/range calendar, temperature trace, door and cooling-fault events, excursion summary, PNG/CSV export and printable report.',
+    href:'data_logger_viewer.html',
+    status:'active',
+    meta:'CSV · PNG/Print',
+    icon:'chart'
+  },
+  {
+    code:'TL-02',
+    title:'PDF Merge & Reorder',
+    desc:'Combine certificates, worksheets and jobsheets into a single PDF — drag to reorder, rotate and delete pages. Fully self-contained, iPad-friendly.',
+    href:'pdf_merge_reorder.html',
+    status:'active',
+    meta:'self-contained · 1.9 MB',
+    icon:'pages'
+  },
+];
+
+const icons = {
+  chart:'<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 15l3.5-4.5 3 3L20 6"/>',
+  pages:'<rect x="8" y="3" width="12" height="15" rx="1.5"/><path d="M16 21H5.5A1.5 1.5 0 0 1 4 19.5V7"/>',
+  mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6.5 8.5 6 8.5-6"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>'
+};
+
+function iconSvg(name, extra=''){
+  return `<svg class="icon ${extra}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${icons[name]||''}</svg>`;
+}
+
+function renderCards(){
+  const grid = document.getElementById('grid');
+  let html = '';
+
+  tools.forEach(t=>{
+    const isActive = t.status === 'active';
+    html += `
+    <a class="card ${isActive?'active':'planned'}" ${isActive?`href="${t.href}"`:'href="javascript:void(0)" aria-disabled="true"'}>
+      <div class="card-top">
+        <span class="code">${t.code}</span>
+        ${iconSvg(t.icon)}
+      </div>
+      <h3>${t.title}</h3>
+      <p>${t.desc}</p>
+      <div class="card-top" style="margin-top:14px">
+        <span class="stamp ${isActive?'ready':'dev'}">${isActive?'ACTIVE':'IN DEVELOPMENT'}</span>
+      </div>
+      <div class="card-foot">
+        <span>${t.meta}</span>
+        ${isActive?`<span class="open">Open <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icons.arrow}</svg></span>`:'<span>—</span>'}
+      </div>
+    </a>`;
+  });
+
+  html += `
+    <div class="card addnew">
+      ${iconSvg('plus')}
+      <span>More tools<br>coming soon</span>
+    </div>`;
+
+  grid.innerHTML = html;
+
+  document.getElementById('toolCount').textContent = tools.length;
+  document.getElementById('activeCount').textContent = tools.filter(t=>t.status==='active').length;
+}
+
+function renderDate(){
+  const d = new Date();
+  const opts = {day:'2-digit', month:'short', year:'numeric'};
+  document.getElementById('todayDate').textContent = d.toLocaleDateString('en-GB', opts).toUpperCase();
+  document.getElementById('footYear').textContent = 'v1.562 · ' + d.getFullYear();
+}
+
+renderCards();
+renderDate();
+</script>
+
+</body>
+</html>
