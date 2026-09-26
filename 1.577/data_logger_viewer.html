@@ -1,0 +1,3089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta name="labcal-build" content="v1.577">
+<script src="labcal_build.js"></script>
+<script src="labcal_errlog.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icon-180.png">
+<script src="labcal_testmode.js"></script>
+<script src="labcal_save.js"></script>
+<script src="labcal_nav.js"></script>
+<title>LabCal · Data Logger Viewer</title>
+<style>
+:root{
+  --ink:#0b1f33; --ink-2:#143650; --ink-3:#25506f;
+  --ice:#2ea3c7; --ice-dk:#1b7f9e; --ice-soft:#e8f5fa;
+  --paper:#eef3f6; --card:#ffffff; --line:#d6e1e9; --line-2:#e9eff3;
+  --txt:#12293d; --txt-2:#5b7387; --txt-3:#8fa3b3;
+  --ok:#14805c; --ok-soft:#e3f4ee;
+  --warn:#a86a06; --warn-soft:#fdf1dd;
+  --bad:#c22a30; --bad-soft:#fbe8e8;
+  --t1:#1a6fb5; --t2:#8046c0; --t3:#0d8a6a; --band:#2ea3c722;
+  --r:12px; --r-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,"Helvetica Neue",Arial,sans-serif;
+  --sh:0 1px 2px rgba(11,31,51,.06),0 4px 14px rgba(11,31,51,.05);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%}
+body{
+  font-family:var(--sans); color:var(--txt); background:var(--paper);
+  background-image:linear-gradient(rgba(46,163,199,.055) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(46,163,199,.055) 1px,transparent 1px);
+  background-size:26px 26px;
+  font-size:14px; line-height:1.45; overflow-x:hidden;
+}
+button,input,select{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ---------- top bar ---------- */
+.topbar{
+  background:linear-gradient(180deg,var(--ink) 0%,var(--ink-2) 100%);
+  color:#fff; padding:10px 18px; display:flex; align-items:center; gap:14px;
+  position:sticky; top:0; z-index:60; box-shadow:0 2px 10px rgba(11,31,51,.25);
+  padding-top:calc(10px + env(safe-area-inset-top));
+}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.mark{
+  width:30px;height:30px;border-radius:8px;flex:0 0 auto;
+  background:linear-gradient(150deg,var(--ice) 0%,#5fd0e8 100%);
+  display:grid;place-items:center;color:#06283a;font-weight:800;font-size:15px;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)
+}
+.brand h1{font-size:15px;margin:0;font-weight:650;letter-spacing:.2px;white-space:nowrap}
+.brand span{display:block;font-size:11px;color:#9dc4d8;font-weight:400;letter-spacing:.6px;text-transform:uppercase}
+.topbar .spacer{flex:1}
+.range-badge{
+  background:rgba(95,208,232,.16);border:1px solid rgba(95,208,232,.5);color:#bfeaf7;
+  padding:4px 11px;border-radius:20px;font-size:11.5px;font-weight:700;letter-spacing:.5px;white-space:nowrap
+}
+.jobline .range-tag{
+  font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--ice-dk);background:var(--ice-soft);
+  border:1px solid #b9e0ee;border-radius:20px;padding:2px 9px;font-family:var(--sans)
+}
+.tb-btn .sm{display:none}
+@media(max-width:660px){
+  .topbar{gap:8px;padding-left:12px;padding-right:12px}
+  .brand span{display:none}
+  .brand h1{font-size:14px}
+  .tb-btn{padding:6px 9px;font-size:12px}
+  .tb-btn .lg{display:none} .tb-btn .sm{display:inline}
+}
+/* v1.565: room for ← Back / Home on a phone — the title gives way, the logo stays */
+@media(max-width:480px){ .brand h1{display:none} }
+.tb-btn{
+  background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.16);color:#eaf6fb;
+  padding:7px 12px;border-radius:8px;font-size:13px;font-weight:500;white-space:nowrap
+}
+.tb-btn:hover{background:rgba(255,255,255,.16)}
+.tb-btn:disabled{opacity:.4;cursor:not-allowed}
+.tb-btn.primary{background:var(--ice);border-color:var(--ice);color:#04222f;font-weight:650}
+.tb-btn.primary:hover{background:#3fb6da}
+
+/* ---------- layout ---------- */
+.wrap{display:grid;grid-template-columns:290px 1fr;gap:16px;padding:16px;align-items:start;max-width:1680px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);min-width:0}
+.main,.side{min-width:0}
+.tbl-scroll{max-width:100%}
+.card+.card{margin-top:14px}
+.card>h2{
+  margin:0;padding:11px 14px;font-size:11.5px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;
+  color:var(--ink-3);border-bottom:1px solid var(--line-2);display:flex;align-items:center;gap:8px
+}
+.card>h2 .tag{margin-left:auto;font-size:10.5px;letter-spacing:.4px;color:var(--txt-3);font-weight:500;text-transform:none}
+.body{padding:14px}
+@media(min-width:1101px){ .side{position:sticky;top:74px} }
+
+/* ---------- tablet / phone: controls become a slide-over panel ---------- */
+.panel-btn{display:none}
+.side-head{display:none}
+.scrim{display:none}
+@media(max-width:1100px){
+  .wrap{display:block;padding:12px;padding-bottom:26px}
+  .main{width:100%}
+  /* before a folder is loaded the panel would hide the only useful control, so keep it inline */
+  body:not(.loaded) .side{width:100%;max-width:560px;margin:0 auto 14px}
+  body.loaded .panel-btn{display:inline-flex;align-items:center;gap:7px}
+  body.loaded .side{
+    position:fixed;top:0;left:0;bottom:0;z-index:130;
+    width:min(90vw,370px);background:var(--paper);border-right:1px solid var(--line);
+    padding:8px 12px calc(30px + env(safe-area-inset-bottom));
+    padding-top:calc(10px + env(safe-area-inset-top));
+    overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+    transform:translateX(-103%);transition:transform .22s cubic-bezier(.32,.72,0,1);
+  }
+  body.loaded.panel .side{transform:none;box-shadow:0 0 44px rgba(11,31,51,.3)}
+  body.loaded .side-head{
+    display:flex;align-items:center;gap:10px;padding:2px 2px 10px;
+    font-size:11.5px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-3)
+  }
+  .side-head button{
+    margin-left:auto;width:38px;height:38px;border-radius:10px;border:1px solid var(--line);
+    background:#fff;color:var(--ink-3);font-size:19px;line-height:1;display:grid;place-items:center
+  }
+  body.loaded .scrim{
+    display:block;position:fixed;inset:0;z-index:120;background:rgba(6,24,38,.42);
+    opacity:0;pointer-events:none;transition:opacity .22s
+  }
+  body.loaded.panel .scrim{opacity:1;pointer-events:auto}
+  body.panel{overflow:hidden}
+  #chart{height:clamp(300px,46vh,440px)}
+}
+
+/* ---------- finger-sized targets on touch screens ---------- */
+@media(pointer:coarse){
+  .f input,.f select{padding:10px 11px;font-size:16px}  /* 16px stops iOS zooming the page on focus */
+  .day{height:46px;font-size:12px}
+  .seg button{padding:11px 4px;font-size:13px}
+  .quick button{padding:11px 6px;font-size:12.5px}
+  .mo-nav button{width:38px;height:38px;font-size:18px}
+  .mo-nav select{padding:10px 8px;font-size:13.5px}
+  .chip{padding:8px 13px;font-size:13px}
+  .zbtn{min-width:36px;height:36px}
+  .zbtn.wide{padding:0 14px}
+  .pick label{padding:13px 12px;font-size:14px}
+  .tb-btn{padding:9px 13px}
+  .clear-btn{padding:11px 10px}
+  td{padding:10px 12px}
+  .alert-body .dates button{padding:7px 13px}
+  .lnk{font-size:13px}
+  .daynav button{width:40px;height:40px}
+}
+
+/* ---------- day stepper on the summary strip ---------- */
+.daynav{display:flex;align-items:center;gap:6px;margin-left:auto}
+.daynav button{
+  width:34px;height:34px;flex:0 0 auto;border:1px solid var(--line);background:#fff;border-radius:9px;
+  font-size:17px;font-weight:700;color:var(--ink-3);line-height:1;display:grid;place-items:center
+}
+.daynav button:hover:not(:disabled){background:var(--ice-soft);border-color:var(--ice)}
+.daynav button:disabled{opacity:.3;cursor:default}
+
+/* ---------- drop zone ---------- */
+.drop{
+  border:2px dashed var(--line);border-radius:var(--r);padding:22px 16px;text-align:center;
+  background:#fbfdfe;transition:.15s;
+}
+.drop.hot{border-color:var(--ice);background:var(--ice-soft)}
+.drop .snow{font-size:26px;line-height:1;color:var(--ice)}
+.drop p{margin:8px 0 12px;color:var(--txt-2);font-size:12.5px}
+.pick{display:flex;flex-direction:column;gap:8px}
+.pick label{
+  display:block;background:var(--ink-2);color:#fff;border-radius:var(--r-sm);padding:9px 12px;
+  font-size:13px;font-weight:600;cursor:pointer;text-align:center
+}
+.pick label:hover{background:var(--ink-3)}
+.pick label.alt{background:#fff;color:var(--ink-2);border:1px solid var(--line)}
+.pick label.alt:hover{background:var(--ice-soft);border-color:var(--ice)}
+.pick input[type=file]{display:none}
+.hint{font-size:11.5px;color:var(--txt-3);margin-top:10px;line-height:1.5}
+
+/* ---------- calendar ---------- */
+.mo{margin-bottom:14px}
+.mo:last-child{margin-bottom:0}
+.mo-h{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
+.mo-h b{font-size:13px;font-weight:650}
+.mo-h span{font-size:11px;color:var(--txt-3);margin-left:auto}
+.mo-nav{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.mo-nav button{
+  width:30px;height:30px;flex:0 0 auto;border:1px solid var(--line);background:#fff;border-radius:var(--r-sm);
+  font-size:16px;font-weight:700;color:var(--ink-3);line-height:1
+}
+.mo-nav button:hover:not(:disabled){background:var(--ice-soft);border-color:var(--ice)}
+.mo-nav button:disabled{opacity:.3;cursor:default}
+.mo-nav select{
+  flex:1;min-width:0;padding:6px 8px;border:1px solid var(--line);border-radius:var(--r-sm);
+  background:#fff;font-size:12.5px;font-weight:600;color:var(--txt)
+}
+.mo-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;font-size:11px;color:var(--txt-3)}
+.lnk{background:none;border:0;padding:0;color:var(--ice-dk);font-size:11.5px;font-weight:650;text-decoration:underline}
+.lnk:hover{color:var(--ink-2)}
+.dow,.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.dow div{text-align:center;font-size:9.5px;color:var(--txt-3);font-weight:600;letter-spacing:.4px;padding-bottom:3px}
+.day{
+  position:relative;height:36px;border-radius:6px;border:1px solid transparent;background:#f5f8fa;
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:2px;
+  font-size:10.5px;color:var(--txt-3);font-family:var(--mono);overflow:hidden
+}
+.day.has{background:#fff;border-color:var(--line);color:var(--txt);cursor:pointer}
+.day.has:hover{border-color:var(--ice);box-shadow:0 0 0 2px var(--ice-soft)}
+.day .bar{position:absolute;left:3px;right:3px;bottom:2px;height:4px;border-radius:2px;background:var(--ok)}
+.day.s-warn .bar{background:var(--warn)} .day.s-bad .bar{background:var(--bad)}
+.day.sel{background:var(--ink-2);border-color:var(--ink-2);color:#fff}
+.day.sel .bar{opacity:.95}
+.day.inr{background:var(--ice-soft);border-color:#b9e0ee;color:var(--ink-2)}
+.seg{display:flex;gap:0;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden;margin-bottom:10px}
+.seg button{flex:1;background:#fff;border:0;padding:6px 4px;font-size:11.5px;font-weight:600;color:var(--txt-2);border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--ink-2);color:#fff}
+.quick{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+.quick button{background:#fff;border:1px solid var(--line);border-radius:var(--r-sm);padding:6px 4px;font-size:11.5px;font-weight:600;color:var(--ink-3)}
+.quick button:hover{background:var(--ice-soft);border-color:var(--ice)}
+
+/* ---------- limits ---------- */
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.f label{display:block;font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--txt-2);margin-bottom:4px}
+.f input,.f select{
+  width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:var(--r-sm);background:#fff;
+  font-family:var(--mono);font-size:13px
+}
+.f input:focus,.f select:focus{outline:2px solid var(--ice);outline-offset:-1px;border-color:var(--ice)}
+.f.full{grid-column:1/-1}
+.f select{font-family:var(--sans)}
+
+/* ---------- summary strip ---------- */
+.jobline{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:baseline;padding:12px 16px;border-bottom:1px solid var(--line-2)}
+.jobline .job{font-size:17px;font-weight:700;letter-spacing:-.2px;border-radius:6px;padding:1px 5px;margin:-1px -5px;cursor:text}
+.jobline .job:hover{background:var(--ice-soft)}
+.jobline .job:focus{outline:2px solid var(--ice);background:#fff}
+@media print{ .jobline .job{background:none!important;padding:0;margin:0} }
+.jobline .meta{font-size:12px;color:var(--txt-2);font-family:var(--mono)}
+.jobline .meta b{color:var(--txt);font-weight:600}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:1px;background:var(--line-2)}
+@media(max-width:520px){ .stats{grid-template-columns:repeat(2,1fr)} .st .v{font-size:19px} }
+.st{background:#fff;padding:11px 13px}
+.st .k{font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--txt-3)}
+.st .v{font-family:var(--mono);font-size:21px;font-weight:600;letter-spacing:-.6px;margin-top:2px;line-height:1.15}
+.st .v small{font-size:12px;font-weight:500;color:var(--txt-2);letter-spacing:0}
+.st .u{font-size:11px;color:var(--txt-3);font-family:var(--mono)}
+.st.bad .v{color:var(--bad)} .st.ok .v{color:var(--ok)} .st.warn .v{color:var(--warn)}
+.verdict{padding:9px 16px;font-size:12.5px;font-weight:650;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line-2)}
+.verdict.ok{background:var(--ok-soft);color:var(--ok)}
+.verdict.bad{background:var(--bad-soft);color:var(--bad)}
+.card.alert{border-color:#e9a6a8;background:linear-gradient(180deg,#fdf0f0,#fff 70%)}
+.card.notice{border-color:#e6c489;background:linear-gradient(180deg,#fdf6e8,#fff 70%)}
+.card.notice .alert-head{color:var(--warn)}
+.warn-mark.amber{background:var(--warn)}
+.notice .alert-body .dates button{border-color:#e0c08a;color:var(--warn)}
+.notice .alert-body .dates button:hover{background:var(--warn);color:#fff;border-color:var(--warn)}
+.alert-head{display:flex;align-items:center;gap:10px;padding:12px 16px 6px;font-size:15px;color:var(--bad)}
+.warn-mark{
+  width:22px;height:22px;flex:0 0 auto;border-radius:6px;background:var(--bad);color:#fff;
+  display:grid;place-items:center;font-weight:800;font-size:14px;line-height:1
+}
+.alert-body{padding:0 16px 13px 48px;font-size:12.5px;color:var(--txt-2)}
+.alert-body .dates{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.alert-body .dates button{
+  background:#fff;border:1px solid #e0b0b1;color:var(--bad);border-radius:20px;padding:4px 11px;
+  font-size:12px;font-weight:650;font-family:var(--mono)
+}
+.alert-body .dates button:hover{background:var(--bad);color:#fff;border-color:var(--bad)}
+.clear-btn{
+  width:100%;margin-top:12px;padding:8px 10px;border:1px solid var(--line);background:#fff;border-radius:var(--r-sm);
+  font-size:12.5px;font-weight:600;color:var(--txt-2)
+}
+.clear-btn:hover{background:var(--bad-soft);border-color:#e9a6a8;color:var(--bad)}
+.day.fault::after{
+  content:'!';position:absolute;top:0;right:2px;font-size:9px;font-weight:800;color:var(--bad);
+  font-family:var(--sans);line-height:1.2
+}
+.day.sel.fault::after{color:#ff9b9d}
+.pill.cool{background:var(--bad-soft);color:var(--bad)}
+.pill.weak{background:var(--warn-soft);color:var(--warn)}
+.pill.door{background:var(--warn-soft);color:var(--warn)}
+.dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex:0 0 auto}
+
+/* ---------- chart ---------- */
+.chart-top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line-2)}
+.chip{
+  display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line);
+  border-radius:20px;padding:5px 11px;font-size:12px;font-weight:600;color:var(--txt-2)
+}
+.chip.on{background:var(--ice-soft);border-color:var(--ice);color:var(--ink-2)}
+.chip i{width:10px;height:10px;border-radius:3px;background:var(--txt-3);display:inline-block}
+.chip.on i.c1{background:var(--t1)} .chip.on i.c2{background:var(--t2)} .chip.on i.c3{background:var(--t3)}
+.chip.on i.cd{background:var(--warn)} .chip.on i.cc{background:#9fb6c4}
+.zoomgrp{margin-left:auto;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.zlbl{font-family:var(--mono);font-size:11px;color:var(--txt-2);margin-right:4px;white-space:nowrap}
+.zbtn{
+  min-width:28px;height:28px;padding:0 6px;border:1px solid var(--line);background:#fff;border-radius:7px;
+  font-size:14px;font-weight:700;color:var(--ink-3);line-height:1;display:grid;place-items:center
+}
+.zbtn.wide{min-width:auto;padding:0 10px;font-size:12px;font-weight:600}
+.zbtn:hover:not(:disabled){background:var(--ice-soft);border-color:var(--ice)}
+.zbtn:disabled{opacity:.35;cursor:default}
+@media(max-width:560px){ .zoomgrp{margin-left:0;width:100%} .zlbl{margin-right:auto} }
+#chart{cursor:crosshair}
+.chart-wrap{position:relative;padding:6px 6px 0}
+canvas{display:block;width:100%;touch-action:pan-y}
+#chart{height:390px}
+@media(max-width:700px){ #chart{height:300px} }
+.tip{
+  position:absolute;pointer-events:none;background:var(--ink);color:#fff;border-radius:8px;padding:8px 10px;
+  font-size:12px;font-family:var(--mono);line-height:1.5;box-shadow:0 6px 20px rgba(11,31,51,.3);
+  opacity:0;transition:opacity .1s;z-index:5;white-space:nowrap
+}
+.tip b{color:#7fd8f0;font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:14px;padding:8px 16px 12px;font-size:11.5px;color:var(--txt-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:16px;height:3px;border-radius:2px;display:inline-block}
+
+/* ---------- tables ---------- */
+.tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{
+  text-align:left;font-size:10px;letter-spacing:.7px;text-transform:uppercase;color:var(--txt-2);font-weight:700;
+  padding:8px 12px;border-bottom:1px solid var(--line);background:#fafcfd;position:sticky;top:0;white-space:nowrap
+}
+td{padding:7px 12px;border-bottom:1px solid var(--line-2);font-family:var(--mono);white-space:nowrap}
+td.txt{font-family:var(--sans)}
+td.approx{color:var(--txt-3)}
+tr:last-child td{border-bottom:0}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover{background:var(--ice-soft)}
+.pill{display:inline-block;padding:1px 7px;border-radius:20px;font-size:11px;font-weight:700;font-family:var(--sans)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.t1{background:#e7f0f9;color:var(--t1)} .pill.t2{background:#f1e9fa;color:var(--t2)}
+.pill.t3{background:#e3f5ef;color:var(--t3)}
+.pill.ev-door{background:#fdf1dd;color:var(--warn)}
+.pill.ev-alarm{background:var(--bad-soft);color:var(--bad)}
+.pill.ev-fault{background:var(--bad-soft);color:var(--bad)}
+.pill.ev-power{background:#ede8fa;color:#6b3fb0}
+.pill.ev-battery{background:#e8f0f7;color:var(--t1)}
+.pill.ev-status{background:#eef2f5;color:var(--txt-2)}
+.empty{padding:26px 16px;text-align:center;color:var(--txt-3);font-size:13px}
+.foot{padding:9px 14px;font-size:11px;color:var(--txt-3);border-top:1px solid var(--line-2);display:flex;gap:14px;flex-wrap:wrap}
+
+/* ---------- welcome ---------- */
+.welcome{padding:40px 24px;text-align:center}
+.welcome h3{margin:0 0 6px;font-size:20px;font-weight:700;letter-spacing:-.3px}
+.welcome p{margin:0 auto;max-width:520px;color:var(--txt-2);font-size:13.5px}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;max-width:760px;margin:26px auto 0;text-align:left}
+.step{background:#fbfdfe;border:1px solid var(--line-2);border-radius:var(--r-sm);padding:12px 14px}
+.step b{display:block;font-size:12px;color:var(--ice-dk);letter-spacing:.5px;text-transform:uppercase;margin-bottom:3px}
+.step span{font-size:12.5px;color:var(--txt-2)}
+
+.toast{
+  position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(10px);background:var(--ink);color:#fff;
+  padding:10px 16px;border-radius:10px;font-size:13px;box-shadow:0 8px 26px rgba(11,31,51,.35);opacity:0;
+  transition:.18s;z-index:200;pointer-events:none;max-width:90vw;text-align:center
+}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ---------- print ---------- */
+@media print{
+  @page{size:A4 landscape;margin:10mm}
+  body{background:#fff}
+  .topbar,.side,.scrim,.chart-top,.noprint,.foot,.toast,.alert-body .dates{display:none!important}
+  .wrap{display:block;padding:0;max-width:none}
+  .card{box-shadow:none;border-color:#bbb;break-inside:avoid;margin-bottom:8px}
+  .card+.card{margin-top:8px}
+  #chart{height:260px}
+  .print-head{display:block!important}
+  th{background:#f2f2f2!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .st,.verdict,.pill,.day .bar{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+.print-head{display:none;padding:8px 0 10px;border-bottom:2px solid var(--ink);margin-bottom:10px}
+.print-head b{font-size:15px}
+.print-head span{float:right;font-size:11px;color:#555;font-family:var(--mono)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="mark">L</div>
+    <div>
+      <h1>Data Logger Viewer</h1>
+      <span>LabCal Suite · Labcold</span>
+    </div>
+  </div>
+  <span class="range-badge" id="rangeBadge" hidden></span>
+  <div class="spacer"></div>
+  <button class="tb-btn panel-btn" id="btnPanel" title="Dates, limits and loading">☰<span class="lg">Controls</span></button>
+  <button class="tb-btn" id="btnPng" disabled><span class="lg">Save chart</span><span class="sm">PNG</span></button>
+  <button class="tb-btn" id="btnCsv" disabled><span class="lg">Export summary</span><span class="sm">CSV</span></button>
+  <button class="tb-btn primary" id="btnPrint" disabled><span class="lg">Print report</span><span class="sm">Print</span></button>
+</div>
+
+<div class="wrap">
+
+  <!-- ============ SIDEBAR ============ -->
+  <div class="side">
+
+    <div class="side-head">Controls<button id="btnPanelClose" title="Close">×</button></div>
+
+    <div class="card" id="loadCard">
+      <h2>Load data</h2>
+      <div class="body">
+        <div class="drop" id="drop">
+          <div class="snow">❄</div>
+          <p>Drop the customer folder here</p>
+          <div class="pick">
+            <label>Choose folder<input type="file" id="fDir" webkitdirectory directory multiple></label>
+            <label class="alt">Choose CSV files<input type="file" id="fFiles" multiple accept=".csv,.CSV,.zip,.ZIP,text/csv,application/zip"></label>
+            <label class="alt">Choose a ZIP of the card<input type="file" id="fZip" accept=".zip,.ZIP,application/zip"></label>
+          </div>
+        </div>
+        <button class="clear-btn" id="btnClear" hidden>Clear and start a new customer</button>
+        <div class="hint" id="loadHint">
+          Reads Labcold controller logs (<span class="mono">YYMMDD.CSV</span>) from the monthly folders. Everything stays on this device — nothing is uploaded.
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="calCard" hidden>
+      <h2>Dates <span class="tag" id="dayCount"></span></h2>
+      <div class="body">
+        <div class="seg" id="modeSeg">
+          <button data-mode="day" class="on">Single day</button>
+          <button data-mode="range">Range</button>
+        </div>
+        <div id="cal"></div>
+        <div class="quick">
+          <button data-q="last">Latest day</button>
+          <button data-q="7">Last 7 days</button>
+          <button data-q="month">Latest month</button>
+          <button data-q="all">All data</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="limCard" hidden>
+      <h2>Alarm limits</h2>
+      <div class="body">
+        <div class="fields">
+          <div class="f full">
+            <label for="preset">Preset</label>
+            <select id="preset">
+              <option value="custom">Custom</option>
+              <option value="ibb" hidden>IBB blood bank · air 2 to 8, load 2 to 6 °C</option>
+              <option value="2,6">Blood bank fridge · 2 to 6 °C</option>
+              <option value="2,8">Pharmacy / vaccine fridge · 2 to 8 °C</option>
+              <option value="20,24">Platelet incubator · 20 to 24 °C</option>
+              <option value="-30,-15">Plasma freezer · −30 to −15 °C</option>
+              <option value="-90,-60">Ultra-low freezer · −90 to −60 °C</option>
+            </select>
+          </div>
+          <div class="f"><label for="lo" id="labLo">Low limit °C</label><input id="lo" type="number" step="0.1" value="2"></div>
+          <div class="f"><label for="hi" id="labHi">High limit °C</label><input id="hi" type="number" step="0.1" value="8"></div>
+          <div class="f" id="fLoadLo" hidden><label for="loadLo">Load low °C</label><input id="loadLo" type="number" step="0.1" value="2"></div>
+          <div class="f" id="fLoadHi" hidden><label for="loadHi">Load high °C</label><input id="loadHi" type="number" step="0.1" value="6"></div>
+          <div class="f"><label for="minDur">Ignore under</label><input id="minDur" type="number" step="1" min="0" value="1"></div>
+          <div class="f"><label for="chan">Assess</label>
+            <select id="chan">
+              <option value="both" selected>T1 and T2</option>
+              <option value="all" hidden>T1, T2 and T3</option>
+              <option value="1">T1 only</option>
+              <option value="2">T2 only</option>
+              <option value="3" hidden>T3 only</option>
+            </select>
+          </div>
+        </div>
+        <div class="hint">Excursions shorter than the minutes above are ignored, so a single blip during a defrost cycle doesn't flag the whole day.</div>
+      </div>
+    </div>
+
+    <div class="card" id="instCard" hidden>
+      <h2>Instrument</h2>
+      <div class="body" id="instBody"></div>
+    </div>
+  </div>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main">
+
+    <div class="card" id="welcome">
+      <div class="welcome">
+        <h3>Read a fridge, one folder at a time</h3>
+        <p>Point this at a customer's downloaded controller data and it charts every logged minute — T1 and T2, door events, compressor duty — with the temperature range you're assessing against.</p>
+        <div class="steps">
+          <div class="step"><b>1 · Load</b><span>Pick the job folder (it reads every month inside), or select the CSV files directly on an iPad.</span></div>
+          <div class="step"><b>2 · Choose dates</b><span>Tap a day in the calendar, or switch to Range and tap a start and end.</span></div>
+          <div class="step"><b>3 · Read it</b><span>Min, max, mean and MKT, time in range, and every excursion listed with its duration.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card notice" id="mixedCard" hidden>
+      <div class="alert-head"><span class="warn-mark amber">?</span><b>More than one controller in this folder</b></div>
+      <div class="alert-body" id="mixedBody"></div>
+    </div>
+
+    <div class="card notice" id="clkCard" hidden>
+      <div class="alert-head"><span class="warn-mark amber">!</span><b id="clkTitle"></b></div>
+      <div class="alert-body" id="clkBody"></div>
+    </div>
+
+    <div class="card notice" id="pwrCard" hidden>
+      <div class="alert-head"><span class="warn-mark amber">!</span><b id="pwrTitle"></b></div>
+      <div class="alert-body" id="pwrBody"></div>
+    </div>
+
+    <div class="card alert" id="alertCard" hidden>
+      <div class="alert-head"><span class="warn-mark">!</span><b id="alertTitle"></b></div>
+      <div class="alert-body" id="alertBody"></div>
+    </div>
+
+    <div class="card" id="sumCard" hidden>
+      <div class="print-head"><b id="phTitle">Temperature record</b><span id="phDate"></span></div>
+      <div class="jobline">
+        <div class="job" id="jobName" contenteditable="true" spellcheck="false" title="Click to correct the name that appears on the report">—</div>
+        <span class="range-tag" id="rangeTag" hidden></span>
+        <div class="meta" id="rangeLbl"></div>
+        <div class="meta" id="cover"></div>
+        <div class="daynav noprint" id="dayNav" hidden>
+          <button id="dPrev" title="Previous day">‹</button>
+          <button id="dNext" title="Next day">›</button>
+        </div>
+      </div>
+      <div class="verdict" id="verdict"><span class="dot"></span><span id="verdictTxt"></span></div>
+      <div class="stats" id="stats"></div>
+    </div>
+
+    <div class="card" id="chartCard" hidden>
+      <h2>Temperature trace <span class="tag" id="resLbl"></span></h2>
+      <div class="chart-top noprint">
+        <button class="chip on" data-s="t1"><i class="c1"></i><span id="labT1">T1 air</span></button>
+        <button class="chip on" data-s="t2"><i class="c2"></i><span id="labT2">T2 load</span></button>
+        <button class="chip on" data-s="t3" hidden><i class="c3"></i>T3 probe</button>
+        <button class="chip on" data-s="band"><i class="cb" style="background:#9ed4e6"></i>Limit band</button>
+        <button class="chip on" data-s="door"><i class="cd"></i>Door open</button>
+        <button class="chip" data-s="comp"><i class="cc"></i>Compressor</button>
+        <div class="zoomgrp">
+          <span class="zlbl" id="zoomLbl">Full range</span>
+          <button class="zbtn" id="btnPanL" title="Pan back" disabled>‹</button>
+          <button class="zbtn" id="btnOut" title="Zoom out" disabled>−</button>
+          <button class="zbtn" id="btnIn" title="Zoom in">+</button>
+          <button class="zbtn" id="btnPanR" title="Pan forward" disabled>›</button>
+          <button class="zbtn wide" id="btnReset" title="Back to the full range" disabled>Reset</button>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="chart"></canvas>
+        <div class="tip" id="tip"></div>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--t1)"></i><span id="legT1">T1 air sensor</span></span>
+        <span><i style="background:var(--t2)"></i><span id="legT2">T2 load / bottle sensor</span></span>
+        <span id="t3Legend" hidden><i style="background:var(--t3)"></i>T3 probe</span>
+        <span><i style="background:#9ed4e6;height:10px;border-radius:2px"></i>Within limits</span>
+        <span><i style="background:var(--warn);height:10px;width:4px"></i>Door open</span>
+        <span id="setLegend"><i style="background:var(--txt-3);height:0;border-top:2px dashed var(--txt-3)"></i>Set point</span>
+        <span class="noprint" style="color:var(--txt-3)">Drag across the chart to zoom · double-click to reset · pinch on touch</span>
+      </div>
+    </div>
+
+    <div class="card" id="faultCard" hidden>
+      <h2>Cooling faults and door events <span class="tag" id="faultCount"></span></h2>
+      <div class="tbl-scroll"><table id="faultTbl"></table></div>
+      <div class="foot noprint">Tap a row to zoom to it. A cooling fault means the compressor was running with the door shut and mains healthy, and the temperature still rose.</div>
+    </div>
+
+    <div class="card" id="rtCard" hidden>
+      <h2>Controller events <span class="tag" id="rtCount"></span></h2>
+      <div class="tbl-scroll"><table id="rtTbl"></table></div>
+      <div class="foot noprint" id="rtFoot">Tap a row to zoom to it. Codes decoded from the table in Labcold's own CSV Viewer.</div>
+    </div>
+
+    <div class="card" id="excCard" hidden>
+      <h2>Excursions <span class="tag" id="excCount"></span></h2>
+      <div class="tbl-scroll"><table id="excTbl"></table></div>
+      <div class="foot noprint">Tap any excursion to zoom straight to it.</div>
+    </div>
+
+    <div class="card" id="dayCard" hidden>
+      <h2>Day by day</h2>
+      <div class="tbl-scroll"><table id="dayTbl"></table></div>
+      <div class="foot noprint">Tap any row to open that day.</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   LabCal · Data Logger Viewer
+   Reads Labcold controller CSV exports (YYMMDD.CSV) and charts them.
+   Fully offline, single file, no external dependencies.
+   ============================================================ */
+
+const $  = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+
+const DAYS = new Map();           // 'YYYY-MM-DD' -> day object
+let META = {job:'', customer:'', unit:'', fw:'', pn:'', setpoint:null, title:'',
+            range:'', controller:'', fileLimits:null, product:''};
+let SEL  = {mode:'day', from:null, to:null, anchor:null};
+let SHOW = {t1:true, t2:true, t3:true, band:true, door:true, comp:false};
+/* probe names change with the model — a blood bank recorder logs Air and Load */
+let CHL  = {a:'T1', b:'T2', e:'T3'};
+let VIEW = null;                  // current computed view
+let HAS_T3 = false;               // a third probe is fitted on some models
+let LIMITS = {lo:2, hi:8, loadLo:2, loadHi:6, dual:false, minDur:1, chan:'both'};
+
+/* ---------- tiny store (safe if storage is blocked) ---------- */
+const store = {
+  get(k,d){ try{ const v=localStorage.getItem('labcal.dlv.'+k); return v===null?d:JSON.parse(v);}catch(e){return d} },
+  set(k,v){ try{ localStorage.setItem('labcal.dlv.'+k, JSON.stringify(v)); }catch(e){} }
+};
+
+/* ---------- helpers ---------- */
+const pad = n => String(n).padStart(2,'0');
+const iso = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const fromIso = s => { const p=s.split('-').map(Number); return new Date(p[0],p[1]-1,p[2]); };
+const fmtDate = s => { const d=fromIso(s); return pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear(); };
+const fmtDateShort = s => { const d=fromIso(s);
+  return pad(d.getDate())+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]; };
+const hhmm = m => pad(Math.floor(m/60))+':'+pad(Math.floor(m%60));
+const t1 = v => (v===null||v===undefined||!isFinite(v)) ? '—' : v.toFixed(1);
+function dur(mins){
+  mins = Math.round(mins);
+  if(mins<60) return mins+' min';
+  const h=Math.floor(mins/60), m=mins%60;
+  if(h<24) return h+'h '+pad(m)+'m';
+  return Math.floor(h/24)+'d '+(h%24)+'h';
+}
+function toast(msg){
+  const t=$('#toast'); t.textContent=msg; t.classList.add('on');
+  clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('on'),2600);
+}
+function titleCase(s){
+  return s.replace(/[_-]+/g,' ').replace(/\s+/g,' ').trim()
+          .replace(/\b\w/g,c=>c.toUpperCase());
+}
+
+/* ============================================================
+   1. PARSING
+   ============================================================ */
+
+/* Labcold files are CR-terminated, header block then a Time,... row. */
+function parseCsv(text, fileName){
+  const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  const head = {};
+  let hRow = -1;
+  for(let i=0;i<Math.min(lines.length,25);i++){
+    const L = lines[i];
+    if(/^\s*Time\s*,/i.test(L)){ hRow=i; break; }
+    const p = L.split(',');
+    if(p.length>1 && p[0].trim()){
+      head[p[0].replace(/:/g,'').trim().toLowerCase()] = p[1].trim();
+    }
+  }
+  if(hRow<0) return null;
+
+  const cols = lines[hRow].split(',').map(s=>s.trim().toUpperCase());
+  const ix = name => cols.indexOf(name);
+  const I = {
+    t1:ix('T1')>0?ix('T1'):1, t2:ix('T2')>0?ix('T2'):4,
+    alarm:ix('MAIN ALARM'), door:ix('DOOR OPEN'), doorAl:ix('DOOR ALARM'),
+    comp:ix('COMPRESSOR'), power:ix('POWER LOST'), lowBat:ix('LOW BTRY')
+  };
+
+  /* date: header "Date : ,19/05/2024," — else from filename YYMMDD */
+  let dateKey = null;
+  const dh = head['date'];
+  if(dh && /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/.test(dh)){
+    const m = dh.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+    let y = +m[3]; if(y<100) y += 2000;
+    dateKey = y+'-'+pad(+m[2])+'-'+pad(+m[1]);
+  }else{
+    const fm = fileName.match(/(\d{2})(\d{2})(\d{2})\.csv$/i);
+    if(fm) dateKey = (2000+ +fm[1])+'-'+pad(+fm[2])+'-'+pad(+fm[3]);
+  }
+  if(!dateKey) return null;
+
+  const rows = [];
+  for(let i=hRow+1;i<lines.length;i++){
+    const L = lines[i];
+    if(!L || !L.trim()) continue;
+    const p = L.split(',');
+    if(p.length < 5) continue;
+    const tm = p[0].split(':');
+    const h = parseInt(tm[0],10), mi = parseInt(tm[1],10);
+    if(!isFinite(h)||!isFinite(mi)) continue;
+    const a = parseFloat(p[I.t1]), b = parseFloat(p[I.t2]);
+    const flag = j => (j>0 && p[j]!==undefined) ? (p[j].trim()==='1'?1:0) : 0;
+    rows.push({
+      m: h*60+mi,
+      a: isFinite(a)?a:null,
+      b: isFinite(b)?b:null,
+      d: flag(I.door)||flag(I.doorAl),
+      c: flag(I.comp),
+      x: flag(I.alarm),
+      p: flag(I.power)
+    });
+  }
+  if(!rows.length) return null;
+
+  /* A mains failure restarts the controller clock partway through the day, so the file
+     carries on at an earlier time and a block of minutes gets logged twice with two
+     completely different traces. Sorted by time they interleave and the chart looks
+     like it is oscillating every reading. Record the overlap so it can be flagged. */
+  const clockResets=[];
+  for(let i=1;i<rows.length;i++){
+    if(rows[i].m < rows[i-1].m - 2){
+      const end=rows[i-1].m;
+      let j=i, hi=rows[i].m;
+      while(j<rows.length && rows[j].m<=end){ if(rows[j].m>hi) hi=rows[j].m; j++; }
+      clockResets.push({from:rows[i].m, to:hi, n:j-i});
+      i=j;
+    }
+  }
+
+  rows.sort((r,s)=>r.m-s.m);
+
+  const sp = parseFloat(head['set point']);
+  return {
+    date: dateKey,
+    rows,
+    file: fileName,
+    setpoint: isFinite(sp)?sp:null,
+    unit: head['unit type']||'',
+    fw: head['firmware issue']||'',
+    pn: head['controller pn']||'',
+    range: '19',
+    clockResets,
+    hasDoor: true,
+    hasT3: false,
+    fileLimits: null,
+    iv: medianInterval(rows)
+  };
+}
+
+/* ---------- 24-range event codes ----------
+   Taken from the code table in Labcold's own CSV Viewer (V6). */
+const EVENT_CODES = {
+  '[00]':{d:'Door opened',                 g:'door'},
+  '[01]':{d:'Door closed',                 g:'door'},
+  '[02]':{d:'Door open alarm triggered',   g:'alarm'},
+  '[03]':{d:'Door open alarm cleared',     g:'alarm'},
+  '[10]':{d:'T1 sensor enabled',           g:'status'},
+  '[11]':{d:'T1 sensor disabled',          g:'status'},
+  '[12]':{d:'T1 low alarm triggered',      g:'alarm'},
+  '[13]':{d:'T1 low alarm cleared',        g:'alarm'},
+  '[14]':{d:'T1 high alarm triggered',     g:'alarm'},
+  '[15]':{d:'T1 high alarm cleared',       g:'alarm'},
+  '[16]':{d:'T1 failure warning',          g:'fault'},
+  '[17]':{d:'T1 failure warning cleared',  g:'fault'},
+  '[20]':{d:'T2 sensor enabled',           g:'status'},
+  '[21]':{d:'T2 sensor disabled',          g:'status'},
+  '[22]':{d:'T2 low alarm triggered',      g:'alarm'},
+  '[23]':{d:'T2 low alarm cleared',        g:'alarm'},
+  '[24]':{d:'T2 high alarm triggered',     g:'alarm'},
+  '[25]':{d:'T2 high alarm cleared',       g:'alarm'},
+  '[26]':{d:'T2 failure warning',          g:'fault'},
+  '[27]':{d:'T2 failure warning cleared',  g:'fault'},
+  '[30]':{d:'T3 sensor enabled',           g:'status'},
+  '[31]':{d:'T3 sensor disabled',          g:'status'},
+  '[32]':{d:'T3 low alarm triggered',      g:'alarm'},
+  '[33]':{d:'T3 low alarm cleared',        g:'alarm'},
+  '[34]':{d:'T3 high alarm triggered',     g:'alarm'},
+  '[35]':{d:'T3 high alarm cleared',       g:'alarm'},
+  '[36]':{d:'T3 failure warning',          g:'fault'},
+  '[37]':{d:'T3 failure warning cleared',  g:'fault'},
+  '[40]':{d:'Power back on',               g:'power'},
+  '[41]':{d:'No mains warning triggered',  g:'power'},
+  '[42]':{d:'No mains warning cleared',    g:'power'},
+  '[50]':{d:'No battery warning',          g:'battery'},
+  '[51]':{d:'No battery warning cleared',  g:'battery'},
+  '[52]':{d:'Low battery warning',         g:'battery'},
+  '[53]':{d:'Low battery warning cleared', g:'battery'},
+  '[60]':{d:'Settings changed',            g:'status'},
+  '[61]':{d:'Serial number or name changed', g:'status'},
+  '[70]':{d:'Alarms/warnings muted',       g:'status'}
+};
+/* Labcold logs numbered codes; the blood bank recorder logs plain sentences */
+function codeInfo(c){
+  if(EVENT_CODES[c]) return EVENT_CODES[c];
+  if(/^\[/.test(c)) return {d:'Unrecognised code '+c, g:'status'};
+  const t=c.toLowerCase();
+  let g='status';
+  if(/alarm|underspeed|overspeed|error|fail/.test(t)) g='alarm';
+  if(/batt/.test(t)) g='battery';
+  if(/mains|power|ac ok|dc ok|startup|shutdown|power up/.test(t)) g='power';
+  if(/door/.test(t)) g='door';
+  if(/sensor|refrigeration|compressor|fan|agitator/.test(t)) g='fault';
+  if(/changed|enabled|disabled|revision|clonefile|valid |reset/.test(t)) g='status';
+  return {d:c, g};
+}
+
+/* ---------- IBB blood bank (chart recorder G1 export) ----------
+   "Date/Time",,"Air","Load","Door" at a 20 second sample. One file covers the
+   stretch between two power ups, so it can span several days, and message rows
+   sit between the readings with the temperature columns empty. */
+/* a byte order mark survives as \uFEFF when decoded as UTF-8 and as three
+   stray characters when the file is read as latin-1 */
+function stripBom(t){ return t.replace(/^(\uFEFF|\u00EF\u00BB\u00BF)/,''); }
+
+function splitCsvLine(line){
+  const out=[]; let cur='', q=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(q){
+      if(c==='"'){ if(line[i+1]==='"'){ cur+='"'; i++; } else q=false; }
+      else cur+=c;
+    }else{
+      if(c==='"') q=true;
+      else if(c===','){ out.push(cur.trim()); cur=''; }
+      else cur+=c;
+    }
+  }
+  out.push(cur.trim());
+  return out;
+}
+
+function spreadWithinMinute(rows){
+  let i=0;
+  while(i<rows.length){
+    let j=i;
+    while(j+1<rows.length && rows[j+1].m===rows[i].m) j++;
+    const n=j-i+1;
+    if(n>1) for(let k=0;k<n;k++) rows[i+k].m += k/n;
+    i=j+1;
+  }
+}
+
+function parseIBB(text, fileName){
+  const lines = stripBom(text).replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  let hRow=-1;
+  /* the recorder writes "Date/Time"; the same data re-exported from the HMI writes DateTime */
+  for(let i=0;i<Math.min(lines.length,40);i++){
+    if(/^"?Date\s?\/?\s?Time"?\s*,/i.test(lines[i])){ hRow=i; break; }
+  }
+  if(hRow<0) return null;
+
+  const cols = splitCsvLine(lines[hRow]).map(s=>s.toUpperCase());
+  const iAir=cols.indexOf('AIR'), iLoad=cols.indexOf('LOAD'), iDoor=cols.indexOf('DOOR');
+  if(iAir<0) return null;
+
+  /* the preamble carries the recorder identity and the door coding */
+  let mac='', group='', sw='', doorClosedIs='1';
+  for(let i=0;i<hRow;i++){
+    const p=splitCsvLine(lines[i]);
+    for(let j=0;j<p.length-1;j++){
+      const k=p[j].toUpperCase();
+      if(k==='MAC ADDRESS=') mac=p[j+1];
+      if(k==='SOFTWARE VERSION=') sw=p[j+1];
+    }
+    if(p[0].toUpperCase()==='GROUPNAME') group=p[1]||'';
+    if(p[0].toUpperCase()==='DOOR'){
+      for(let j=1;j<p.length-1;j++) if(/CLOSED/i.test(p[j+1])) doorClosedIs=p[j].replace('=','').trim();
+    }
+  }
+
+  const byDate=new Map();
+  let noSecs=false;
+  for(let i=hRow+1;i<lines.length;i++){
+    const L=lines[i];
+    if(!L || !L.trim()) continue;
+    const p=splitCsvLine(L);
+    /* DD/MM/YY HH:MM:SS.mmm */
+    const dm=(p[0]||'').match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+(\d{1,2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?$/);
+    if(!dm) continue;
+    let y=+dm[3]; if(y<100) y+=2000;
+    const dateKey = y+'-'+pad(+dm[2])+'-'+pad(+dm[1]);
+    const m = (+dm[4])*60 + (+dm[5]) + (dm[6]? (+dm[6])/60 : 0);
+
+    if(!dm[6]) noSecs=true;
+    /* the re-exported variant repeats the timestamp inside the message */
+    const msg = (p[1]||'').trim().replace(/^\d{1,2}\/\d{1,2}\/\d{2,4}\s+\d{1,2}:\d{2}(?::\d{2})?\s+/,'');
+    const av = parseFloat(p[iAir]), bv = iLoad>=0?parseFloat(p[iLoad]):NaN;
+    const dv = iDoor>=0 ? (p[iDoor]||'').trim() : '';
+    const hasReading = isFinite(av) || isFinite(bv);
+    if(!hasReading && !msg) continue;
+
+    if(!byDate.has(dateKey)) byDate.set(dateKey,[]);
+    byDate.get(dateKey).push({
+      m,
+      a: isFinite(av)?av:null,
+      b: isFinite(bv)?bv:null,
+      e: null,
+      d: dv===''? 0 : (dv===doorClosedIs || /closed/i.test(dv) ? 0 : 1),
+      c: 0,                       /* this recorder does not log the compressor */
+      x: 0, p: 0,
+      rt: msg || null
+    });
+  }
+  if(!byDate.size) return null;
+
+  const out=[];
+  for(const [date,rows] of byDate){
+    rows.sort((r,s)=>r.m-s.m);
+    /* An HMI re-export drops the seconds, so three readings a minute all land on
+       the same timestamp. Left alone they stack on one x and the trace draws as a
+       staircase of vertical risers. Spread them evenly across their own minute. */
+    if(noSecs) spreadWithinMinute(rows);
+    out.push({
+      date, rows, file:fileName,
+      setpoint: null,
+      unit: 'Blood bank refrigerator',
+      fw: sw, pn: mac || group || '',
+      range: 'IBB',
+      controller: mac,
+      serial: '',
+      hasDoor: iDoor>=0,
+      hasComp: false,
+      hasT3: false,
+      clockResets: [],
+      iv: medianInterval(rows)
+    });
+  }
+  return out;
+}
+
+/* ---------- IBB HMI event log (P021EventLogs_<serial>/YYYY-MM.csv) ----------
+   Not a trace — an audit trail. It carries the configured alarm limits, the
+   product mode and every alarm, so it is read for settings and merged into
+   the controller events of whatever days the trace already covers. */
+function parseIBBEventLog(text, fileName){
+  const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  if(!/Serial No:/i.test(lines[0]||'')) return null;
+  const sm=(lines[0]||'').match(/Serial No:\s*(\S+)/i);
+  const fm=(lines[0]||'').match(/Firmware Version:\s*(\S+)/i);
+  let hRow=-1;
+  for(let i=0;i<Math.min(lines.length,6);i++) if(/^\s*ID\s*,\s*Type\s*,/i.test(lines[i])){ hRow=i; break; }
+  if(hRow<0) return null;
+
+  const evs=[]; const settings=[];
+  for(let i=hRow+1;i<lines.length;i++){
+    const p=splitCsvLine(lines[i]);
+    if(p.length<8) continue;
+    const type=(p[1]||'').trim(), name=(p[2]||'').trim(), start=(p[3]||'').trim();
+    if(!name || !start) continue;
+    const dm=start.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if(!dm) continue;
+    const dateKey=dm[3]+'-'+pad(+dm[2])+'-'+pad(+dm[1]);
+    const m=(+dm[4])*60+(+dm[5])+(dm[6]?(+dm[6])/60:0);
+    const air=parseFloat(p[6]), load=parseFloat(p[7]);
+    const data=(p[9]||'').trim();
+    evs.push({date:dateKey, m, name, type, a:isFinite(air)?air:null, b:isFinite(load)?load:null, data});
+    if(/limit changed$/i.test(name) || /^Product changed to /i.test(name))
+      settings.push({date:dateKey, m, name, data});
+  }
+  if(!evs.length) return null;
+  return {kind:'evlog', serial:sm?sm[1]:'', fw:fm?fm[1]:'', events:evs, settings, file:fileName};
+}
+
+/* Firmware 1.1.5 writes some limits as the raw 32 bit float bits rather than the
+   number itself — 1073741824 is 0x40000000, which is 2.0 °C. Decode those back. */
+function evNum(txt){
+  const v=parseFloat(txt);
+  if(!isFinite(v)) return null;
+  if(Number.isInteger(v) && !/[.]/.test(txt) && Math.abs(v)>=1e5 && Math.abs(v)<=4294967295){
+    const dv=new DataView(new ArrayBuffer(4));
+    dv.setUint32(0, v>>>0);
+    const f=dv.getFloat32(0);
+    if(isFinite(f) && Math.abs(f)<1000) return Math.round(f*100)/100;
+  }
+  return v;
+}
+
+/* the last configured value wins, so read the settings in time order */
+function limitsFromSettings(settings){
+  const ord = settings.slice().sort((x,y)=> x.date===y.date ? x.m-y.m : (x.date<y.date?-1:1));
+  const out={air:{lo:null,hi:null}, load:{lo:null,hi:null}, product:''};
+  for(const s of ord){
+    const v=evNum(s.data);
+    if(/^Product changed to /i.test(s.name)) out.product = s.name.replace(/^Product changed to /i,'').trim();
+    if(v===null || !isFinite(v)) continue;
+    if(/^Air temp low limit/i.test(s.name))   out.air.lo=v;
+    if(/^Air temp high limit/i.test(s.name))  out.air.hi=v;
+    if(/^Load temp low limit/i.test(s.name))  out.load.lo=v;
+    if(/^Load temp high limit/i.test(s.name)) out.load.hi=v;
+  }
+  return out;
+}
+
+/* ---------- 24-range controller export ----------
+   One file can hold several days. Rows come at ~2 minute intervals,
+   the compressor is logged as a change of state rather than a state,
+   and a third probe (T3) may be fitted. Alarm limits live in the file. */
+function parse24(text, fileName){
+  const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  const cell = (i,j) => { const p=(lines[i]||'').split(','); return (p[j]||'').trim(); };
+
+  const name   = cell(0,1);
+  const serial = cell(0,3);
+
+  /* the configuration block: header row then one row of values */
+  let cfgHdr=-1;
+  for(let i=0;i<Math.min(lines.length,12);i++) if(/^Fridge Type\s*,/i.test(lines[i])){ cfgHdr=i; break; }
+  const cfg={};
+  if(cfgHdr>=0){
+    const keys=lines[cfgHdr].split(',').map(s=>s.trim().toLowerCase());
+    const vals=(lines[cfgHdr+1]||'').split(',').map(s=>s.trim());
+    keys.forEach((k,i)=>{ if(k) cfg[k]=vals[i]; });
+  }
+  let dHdr=-1;
+  for(let i=0;i<Math.min(lines.length,20);i++) if(/^Log Type\s*,/i.test(lines[i])){ dHdr=i; break; }
+  if(dHdr<0) return null;
+
+  const num = v => { const n=parseFloat(v); return isFinite(n)?n:null; };
+  const sp   = num(cfg['setpoint']);
+  const loA  = num(cfg['t1 low alarm']);
+  const hiA  = num(cfg['t1 high alarm']);
+
+  /* compressor, door and mains all arrive as transitions; carry them forward */
+  let comp=null, door=0, power=0, alarm=0, sawDoor=false;
+  const byDate=new Map();
+  let lastStamp=null;
+
+  for(let i=dHdr+1;i<lines.length;i++){
+    const L=lines[i];
+    if(!L || !L.trim()) continue;
+    const p=L.split(',').map(s=>s.trim());
+    const type=p[0];
+    if(type==='DateTimeChange') continue;               // clock adjustment, no reading
+    const dt=p[1];
+    const dm=dt && dt.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if(!dm) continue;
+    const dateKey = dm[3]+'-'+pad(+dm[2])+'-'+pad(+dm[1]);
+    const mins = (+dm[4])*60 + (+dm[5]);
+
+    const ev = p[7];
+    if(ev==='On')  { if(comp===null && lastStamp===null) comp=0; comp=1; }
+    if(ev==='Off') { if(comp===null) comp=1; comp=0; }   // it must have been running to be switched off
+    if(comp===null) comp=0;
+    lastStamp=mins;
+
+    const code = (p[9] && p[9]!=='N/A') ? p[9].trim() : null;
+    if(code){
+      if(code==='[00]'){ door=1; sawDoor=true; }
+      if(code==='[01]'){ door=0; sawDoor=true; }
+      if(code==='[41]'){ power=1; }
+      if(code==='[40]'||code==='[42]'){ power=0; }
+      if(code==='[12]'||code==='[14]'||code==='[22]'||code==='[24]'||code==='[32]'||code==='[34]'||code==='[02]') alarm=1;
+      if(code==='[13]'||code==='[15]'||code==='[23]'||code==='[25]'||code==='[33]'||code==='[35]'||code==='[03]') alarm=0;
+    }
+
+    if(!byDate.has(dateKey)) byDate.set(dateKey,[]);
+    byDate.get(dateKey).push({
+      m: mins,
+      a: num(p[2]), b: num(p[3]), e: num(p[4]),
+      d: door, c: comp, x: alarm, p: power,
+      rt: code
+    });
+  }
+  if(!byDate.size) return null;
+
+  const out=[];
+  for(const [date,rows] of byDate){
+    rows.sort((r,s)=>r.m-s.m);
+    out.push({
+      date, rows, file:fileName,
+      setpoint: sp,
+      unit: cfg['fridge type']||'',
+      fw: '',
+      pn: serial || name || '',
+      range: '24',
+      controller: name,
+      serial: serial,
+      hasDoor: sawDoor,
+      hasT3: rows.some(r=>r.e!==null),
+      fileLimits: (loA!==null && hiA!==null) ? {lo:loA, hi:hiA} : null,
+      t3Limits: (num(cfg['t3 low limit'])!==null && num(cfg['t3 high alarm'])!==null)
+                ? {lo:num(cfg['t3 low limit']), hi:num(cfg['t3 high alarm'])} : null,
+      offsets: {t1:num(cfg['t1 offset']), t2:num(cfg['t2 offset']), t3:num(cfg['t3 offset'])},
+      iv: medianInterval(rows)
+    });
+  }
+  return out;
+}
+
+/* logging interval in minutes, used so durations stay honest across models.
+   The blood bank recorder samples every 20 seconds, so this can be a fraction. */
+function medianInterval(rows){
+  if(rows.length<3) return 1;
+  const gaps=[];
+  for(let i=1;i<rows.length;i++){ const g=rows[i].m-rows[i-1].m; if(g>0 && g<=60) gaps.push(g); }
+  if(!gaps.length) return 1;
+  gaps.sort((a,b)=>a-b);
+  return Math.max(1/60, gaps[Math.floor(gaps.length/2)]);
+}
+
+/* pick the right reader for whatever was dropped in */
+/* ---------- 10 range (the older pharmacy fridges) ----------
+   These SD cards hold one file per day named YYMMDD.csv, with no header row
+   and carriage returns instead of newlines. Eleven fields per line:
+
+     time, T1, T2, D, C, F, I, H, L, B, P
+
+   T2 reads -273.1 when no second probe is fitted. The eight flags are the
+   ones Labcold's own IE-only viewer used, identified there by the letters
+   D(oor), C(ompressor), F(an), I, H(igh alarm), L(ow alarm), B(attery),
+   P(ower). Flag I is carried through but not labelled — see the note in the
+   legend. */
+// Temperatures are usually "  5.3" but some controllers drop the leading
+// digit and write "  .8"; flags are 0/1 on newer cards and letters or blanks
+// on older ones ("00:00,5.1,20,,C,F,,,,,"). Accept all of it here — the
+// detection only has to recognise the shape.
+const TEN_LINE = /^\s*\d{1,2}:\d{2}\s*,\s*-?[\d.]*\d\s*,\s*-?[\d.]*\d\s*(,\s*[01A-Za-z]?\s*){8}$/;
+
+function looksLikeTenRange(text){
+  const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  let checked = 0, matched = 0;
+  for(const L of lines){
+    if(!L.trim()) continue;
+    checked++;
+    if(TEN_LINE.test(L)) matched++;
+    if(checked >= 12) break;
+  }
+  return checked > 0 && matched >= Math.max(3, Math.floor(checked * 0.8));
+}
+
+function parse10(text, fileName){
+  const fm = fileName.match(/(\d{2})(\d{2})(\d{2})\.csv$/i);
+  if(!fm) return null;
+  const dateKey = (2000 + +fm[1]) + '-' + pad(+fm[2]) + '-' + pad(+fm[3]);
+
+  const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  const rows = [];
+  let anyT2 = false, truncated = 0, flagsSeen = {d:0,c:0,f:0,i:0,h:0,l:0,b:0,p:0};
+  for(const raw of lines){
+    const L = raw.replace(/\u0000/g,'').trim();
+    if(!L) continue;
+    const q = L.split(',');
+    if(q.length !== 11) continue;               // stray/partial line
+    const tm = q[0].split(':');
+    const h = parseInt(tm[0],10), mi = parseInt(tm[1],10);
+    if(!isFinite(h) || !isFinite(mi)) continue;
+    // A reading written without its leading digit (".8" where "3.8" was
+    // meant) cannot be recovered. Left out rather than read as 0.8 — a fridge
+    // review must not show a low-temperature excursion that never happened.
+    const rawA = q[1].trim(), rawB = q[2].trim();
+    let a = /^-?\d/.test(rawA) ? parseFloat(rawA) : null;
+    if(a === null) truncated++;
+    let b = /^-?\d/.test(rawB) ? parseFloat(rawB) : null;
+    // -273.1 is the controller's way of saying "no probe fitted"
+    if(b === null || !isFinite(b) || b <= -200) b = null; else anyT2 = true;
+    const on = j => { const v = q[j].trim(); return (v && v !== '0') ? 1 : 0; };
+    const F = { d:on(3), c:on(4), f:on(5), i:on(6), h:on(7), l:on(8), b:on(9), p:on(10) };
+    Object.keys(F).forEach(k=>{ if(F[k]) flagsSeen[k]++; });
+    rows.push({
+      m: h*60 + mi,
+      a: (a !== null && isFinite(a)) ? a : null,
+      b: b,
+      d: F.d,
+      c: F.c,
+      x: (F.h || F.l) ? 1 : 0,      // high or low alarm
+      p: F.p,
+      fan: F.f, i: F.i, hi: F.h, lo: F.l, bat: F.b
+    });
+  }
+  if(!rows.length) return null;
+  rows.sort((r,s)=>r.m-s.m);
+
+  return {
+    date: dateKey,
+    rows,
+    file: fileName,
+    setpoint: null,
+    unit: '',
+    fw: '',
+    pn: '',
+    range: '10',
+    hasDoor: true,
+    hasT3: false,
+    hasT2: anyT2,
+    flagsSeen,
+    truncated,
+    fileLimits: null,
+    iv: medianInterval(rows)
+  };
+}
+
+function parseFile(text, fileName){
+  const head = stripBom(text).slice(0,400);
+  if(/Serial No:/i.test(head) && /\bID\s*,\s*Type\s*,/i.test(text.slice(0,600))) return parseIBBEventLog(text, fileName);
+  if(/"?Date\s?\/?\s?Time"?\s*,/i.test(head) || /"GroupName"/i.test(head)){
+    const ibb = parseIBB(text, fileName);
+    if(ibb) return ibb;
+  }
+  if(/^\s*Controller Name\s*,/i.test(head)) return parse24(text, fileName);
+  const one = parseCsv(text, fileName);
+  if(one) return [one];
+  // no header row at all: the 10 range writes bare data, one file per day
+  if(looksLikeTenRange(text)){
+    const ten = parse10(text, fileName);
+    if(ten) return [ten];
+  }
+  return null;
+}
+
+/* the HMI event log covers months the trace does not, so it is kept aside and
+   folded into whichever days actually have readings */
+let EVLOG = {events:[], settings:[], serial:'', fw:''};
+
+/* The controller stamps an audit entry with 0.0 or 60.0 when the sensors have not
+   been read yet — at boot, or as an alarm is raised. Those are placeholders, not
+   measurements, so check them against the trace and drop the ones that disagree. */
+function eventTemps(day, e){
+  if(e.a===null && e.b===null) return {a:null, b:null};
+  const suspect = (e.a===0 && e.b===0) || (e.a===e.b && e.a>=50);
+  if(!suspect) return {a:e.a, b:e.b};
+  let near=null, bd=Infinity;
+  for(const r of day.rows){
+    if(r.a===null || r.ev) continue;
+    const d=Math.abs(r.m-e.m);
+    if(d<bd){ bd=d; near=r; }
+  }
+  if(near && bd<=10 && Math.abs(near.a-e.a)>2) return {a:null, b:null};
+  if(!near) return {a:null, b:null};
+  return {a:e.a, b:e.b};
+}
+
+function mergeEventLog(){
+  if(!EVLOG.events.length || !DAYS.size) return;
+  for(const e of EVLOG.events){
+    const day=DAYS.get(e.date);
+    if(!day) continue;
+    if(day.rows.some(r=>r.rt===e.name && Math.abs(r.m-e.m)<0.5)) continue;
+    /* a and b stay null so an audit entry never counts as a reading */
+    const rd = eventTemps(day, e);
+    day.rows.push({m:e.m, a:null, b:null, e:null, d:0, c:0,
+                   x:/alarm/i.test(e.name)?1:0, p:/mains fail|power/i.test(e.name)?1:0,
+                   rt:e.name, ev:1, ra:rd.a, rb:rd.b});
+    day._w=null; day._fk=null;
+  }
+  for(const day of DAYS.values()) day.rows.sort((x,y)=>x.m-y.m);
+}
+
+/* ---------- reading a zipped memory card ----------
+   iOS Safari does not support folder upload, so on an iPad the card can only
+   be picked one folder at a time. Compressing the card in the Files app
+   (long-press the folder, Compress) gives one file that carries the whole
+   structure, subfolders and all.
+
+   Unzipped here with the browser's own DecompressionStream, so there is no
+   library to load and it still works with no signal. */
+async function expandZip(file){
+  const buf = new Uint8Array(await file.arrayBuffer());
+  const dv = new DataView(buf.buffer);
+
+  // end of central directory, scanned from the back
+  let eocd = -1;
+  for(let i = buf.length - 22; i >= 0 && i > buf.length - 66000; i--){
+    if(dv.getUint32(i, true) === 0x06054b50){ eocd = i; break; }
+  }
+  if(eocd < 0) throw new Error('That does not look like a zip file.');
+  const count = dv.getUint16(eocd + 10, true);
+  let p = dv.getUint32(eocd + 16, true);
+
+  const out = [];
+  for(let n = 0; n < count; n++){
+    if(dv.getUint32(p, true) !== 0x02014b50) break;
+    const method  = dv.getUint16(p + 10, true);
+    const compSz  = dv.getUint32(p + 20, true);
+    const nameLen = dv.getUint16(p + 28, true);
+    const extraLen= dv.getUint16(p + 30, true);
+    const cmtLen  = dv.getUint16(p + 32, true);
+    const lho     = dv.getUint32(p + 42, true);
+    const name    = new TextDecoder().decode(buf.subarray(p + 46, p + 46 + nameLen));
+    p += 46 + nameLen + extraLen + cmtLen;
+
+    if(name.endsWith('/')) continue;                       // a directory entry
+    const base = name.split('/').pop();
+    if(!/\.csv$/i.test(base)) continue;                    // only the logs
+    if(base.startsWith('.') || name.includes('__MACOSX')) continue;
+
+    // local header, to find where the data actually starts
+    const lnameLen = dv.getUint16(lho + 26, true);
+    const lextraLen= dv.getUint16(lho + 28, true);
+    const start = lho + 30 + lnameLen + lextraLen;
+    const raw = buf.subarray(start, start + compSz);
+
+    let bytes;
+    if(method === 0){ bytes = raw; }
+    else if(method === 8){
+      if(typeof DecompressionStream !== 'function'){
+        throw new Error('This browser cannot open compressed zips. Update iOS, or unzip the card first.');
+      }
+      const ds = new DecompressionStream('deflate-raw');
+      const stream = new Blob([raw]).stream().pipeThrough(ds);
+      bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+    }else{
+      continue;                                            // unsupported method
+    }
+    // the loggers write Latin-1, and stray high bytes appear in some files
+    out.push({ name: base, text: new TextDecoder('latin1').decode(bytes) });
+  }
+  if(!out.length) throw new Error('No CSV files were found inside that zip.');
+  return out;
+}
+
+async function ingest(files){
+  let csvs = files.filter(f=>/\.csv$/i.test(f.name));
+
+  // A zip of the whole card counts as many files, so expand it before
+  // deciding there is nothing to load.
+  const zips = [...files].filter(f=>/\.zip$/i.test(f.name||''));
+  for(const z of zips){
+    try{
+      const inner = await expandZip(z);
+      csvs = csvs.concat(inner.map(x=>({ name:x.name, text:async()=>x.text })));
+    }catch(e){ toast(e.message || 'That zip could not be read'); }
+  }
+
+  if(!csvs.length){ toast('No CSV files found in that selection.'); return; }
+
+  /* job / customer from the top folder name, e.g. "121715 christie hospital" */
+  const rel = csvs[0].webkitRelativePath || '';
+  if(rel){
+    const top = rel.split('/')[0];
+    const jm = top.match(/^(\d{4,8})\s+(.*)$/);
+    if(jm){ META.job = jm[1]; META.customer = titleCase(jm[2]); }
+    else META.customer = titleCase(top);
+  }
+
+  let ok=0, bad=0, dayCount=0, logs=0, emptyFiles=0, truncated=0;
+  const texts = await Promise.all(csvs.map(f=>f.text().catch(()=>null)));
+  texts.forEach((tx,i)=>{
+    // An empty string is a day the logger wrote nothing to, not a file we
+    // failed to read — only null means the read itself failed.
+    if(tx == null){ bad++; return; }
+    if(!tx.trim()){ emptyFiles++; return; }
+    let list=null;
+    try{ list = parseFile(tx, csvs[i].name); }catch(e){ list=null; }
+    /* an HMI event log is an audit trail, not a trace — hold it until every file is in */
+    if(list && list.kind==='evlog'){
+      ok++; logs++;
+      EVLOG.events.push(...list.events);
+      EVLOG.settings.push(...list.settings);
+      if(list.serial) EVLOG.serial=list.serial;
+      if(list.fw)     EVLOG.fw=list.fw;
+      return;
+    }
+    if(!list || !list.length){ bad++; return; }
+    ok++;
+    for(const d of list){
+      truncated += d.truncated || 0;
+      const prev = DAYS.get(d.date);
+      if(prev){
+        /* same day arriving twice — merge without duplicating readings */
+        const seen=new Set(prev.rows.map(r=>r.m+'|'+r.a+'|'+r.b));
+        for(const r of d.rows){
+          const k=r.m+'|'+r.a+'|'+r.b;
+          if(!seen.has(k)){ prev.rows.push(r); seen.add(k); }
+        }
+        prev.rows.sort((x,y)=>x.m-y.m);
+        prev.iv = medianInterval(prev.rows);
+        prev._fk = null;
+        if(d.hasT3) prev.hasT3=true;
+      }else{
+        DAYS.set(d.date, d); dayCount++;
+      }
+      if(d.setpoint!==null && d.setpoint!==undefined) META.setpoint=d.setpoint;
+      if(d.unit) META.unit=d.unit;
+      if(d.fw) META.fw=d.fw;
+      if(d.pn) META.pn=d.pn;
+      if(d.range) META.range=d.range;
+      if(d.controller) META.controller=d.controller;
+      if(d.fileLimits) META.fileLimits=d.fileLimits;
+    }
+  });
+
+  if(!ok){ toast('Those files were not readable as Labcold logs.'); return; }
+  mergeEventLog();
+  // Say plainly what was left out. A 10-range reading the controller wrote
+  // without its leading digit cannot be recovered, and plotting it as 0.x
+  // would invent a temperature excursion.
+  const notes = [];
+  if(logs) notes.push(logs+' event log'+(logs===1?'':'s'));
+  if(bad) notes.push(bad+' skipped');
+  if(emptyFiles) notes.push(emptyFiles+' empty');
+  if(truncated) notes.push(truncated+' reading'+(truncated===1?'':'s')+' incomplete in the log and left out');
+  toast(dayCount+' day'+(dayCount===1?'':'s')+' loaded'+(notes.length?' · '+notes.join(' · '):''));
+  afterLoad();
+}
+
+/* ============================================================
+   2. ANALYSIS
+   ============================================================ */
+
+/* minutes each reading stands for — event rows sit between the regular samples,
+   so counting rows would overstate the clock */
+function dayWeights(day){
+  if(day._w && day._wn===day.rows.length) return day._w;
+  const iv=day.iv||1, n=day.rows.length, w=new Float64Array(n);
+  for(let i=0;i<n;i++){
+    const gap = i<n-1 ? (day.rows[i+1].m - day.rows[i].m) : iv;
+    w[i] = Math.max(0, Math.min(gap, iv*2));
+  }
+  if(n) w[n-1]=iv;
+  day._w=w; day._wn=n;
+  return w;
+}
+
+/* A blood bank fridge holds the load probe to a tighter band than the air probe,
+   so limits are per channel. Everything else uses one pair for all probes. */
+function limOf(lim, key){
+  return (lim.dual && key==='b') ? {lo:lim.loadLo, hi:lim.loadHi} : {lo:lim.lo, hi:lim.hi};
+}
+function limSpan(lim){
+  return lim.dual
+    ? {lo:Math.min(lim.lo,lim.loadLo), hi:Math.max(lim.hi,lim.loadHi)}
+    : {lo:lim.lo, hi:lim.hi};
+}
+function limText(lim){
+  return lim.dual
+    ? 'air '+t1(lim.lo)+' to '+t1(lim.hi)+' °C, load '+t1(lim.loadLo)+' to '+t1(lim.loadHi)+' °C'
+    : t1(lim.lo)+' to '+t1(lim.hi)+' °C';
+}
+
+function dayStats(day, lim){
+  const W = dayWeights(day);
+  let mn=Infinity, mx=-Infinity, sum=0, n=0, mkt=0;
+  let out=0, tot=0, comp=0, doors=0, prevDoor=0, anyBad=false;
+  const useA = lim.chan==='both'||lim.chan==='all'||lim.chan==='1',
+        useB = lim.chan==='both'||lim.chan==='all'||lim.chan==='2',
+        useE = lim.chan==='all' ||lim.chan==='3';
+  for(let i=0;i<day.rows.length;i++){
+    const r=day.rows[i], w=W[i];
+    const vals=[];
+    if(useA && r.a!==null) vals.push([r.a,'a']);
+    if(useB && r.b!==null) vals.push([r.b,'b']);
+    if(useE && r.e!==null && r.e!==undefined) vals.push([r.e,'e']);
+    let bad=false;
+    for(const [v,k] of vals){
+      if(v<mn) mn=v; if(v>mx) mx=v;
+      sum+=v; n++;
+      mkt += Math.exp(-10000/(v+273.15));
+      const cl=limOf(lim,k);
+      if(v<cl.lo || v>cl.hi) bad=true;
+    }
+    tot+=w;
+    if(bad){ out+=w; anyBad=true; }
+    if(r.c) comp+=w;
+    if(r.d && !prevDoor) doors++;
+    prevDoor = r.d;
+  }
+  return {
+    min: n?mn:null, max: n?mx:null,
+    mean: n?sum/n:null,
+    mkt: n? (-10000/Math.log(mkt/n))-273.15 : null,
+    outMin: Math.round(out), total: Math.round(tot), samples: day.rows.length,
+    doors, compPct: tot?comp/tot*100:0, bad: anyBad,
+    inPct: tot? (tot-out)/tot*100 : 0
+  };
+}
+
+/* how long an event lasted, in real minutes, whatever the logging interval */
+function ivOf(date){ const d=DAYS.get(date); return (d && d.iv) || 1; }
+function evLen(e){ return (e.end - e.start) + ivOf(e.date); }
+
+/* excursions across the selected span, per channel, in absolute minutes */
+function findExcursions(days, lim){
+  const list=[];
+  const chans=[];
+  if(lim.chan==='both'||lim.chan==='all'||lim.chan==='1') chans.push({k:'a',lbl:CHL.a});
+  if(lim.chan==='both'||lim.chan==='all'||lim.chan==='2') chans.push({k:'b',lbl:CHL.b});
+  if(lim.chan==='all' ||lim.chan==='3') chans.push({k:'e',lbl:CHL.e});
+  for(const ch of chans){
+    const cl=limOf(lim, ch.k);
+    let cur=null;
+    for(const day of days){
+      for(const r of day.rows){
+        const v = r[ch.k];
+        const bad = v!==null && v!==undefined && (v<cl.lo || v>cl.hi);
+        if(bad){
+          const side = v>cl.hi ? 'High':'Low';
+          if(cur && cur.side===side && cur.date===day.date && cur.k===ch.k){
+            cur.end=r.m; cur.n++;
+            if(side==='High'){ if(v>cur.peak) cur.peak=v; } else { if(v<cur.peak) cur.peak=v; }
+          }else{
+            if(cur) list.push(cur);
+            cur={ch:ch.lbl, k:ch.k, date:day.date, start:r.m, end:r.m, peak:v, side:side, n:1};
+          }
+        }else if(cur){ list.push(cur); cur=null; }
+      }
+      if(cur){ list.push(cur); cur=null; }   // don't merge across a day boundary
+    }
+    if(cur) list.push(cur);
+  }
+  const min = Math.max(0, lim.minDur|0);
+  return list.filter(e=>evLen(e)>=Math.max(1,min))
+             .sort((x,y)=> x.date===y.date ? x.start-y.start : (x.date<y.date?-1:1));
+}
+
+function buildView(){
+  const keys = [...DAYS.keys()].sort();
+  if(!keys.length) return null;
+  const from = SEL.from || keys[keys.length-1];
+  const to   = SEL.to   || from;
+  const days = keys.filter(k=>k>=from && k<=to).map(k=>DAYS.get(k));
+  if(!days.length) return null;
+
+  const lim = LIMITS;
+  const per = days.map(d=>({date:d.date, s:dayStats(d,lim)}));
+  let mn=Infinity, mx=-Infinity, sum=0, n=0, mktS=0, out=0, tot=0, doors=0, comp=0, samples=0;
+  for(let i=0;i<days.length;i++){
+    const d=days[i], s=per[i].s;
+    if(s.min!==null){ mn=Math.min(mn,s.min); mx=Math.max(mx,s.max); }
+    out+=s.outMin; tot+=s.total; doors+=s.doors; samples+=s.samples;
+    const W=dayWeights(d);
+    for(let k=0;k<d.rows.length;k++){
+      const r=d.rows[k];
+      const vals=[];
+      if((lim.chan==='both'||lim.chan==='1') && r.a!==null) vals.push(r.a);
+      if((lim.chan==='both'||lim.chan==='2') && r.b!==null) vals.push(r.b);
+      if(lim.chan==='3' && r.e!==null && r.e!==undefined) vals.push(r.e);
+      for(const v of vals){ sum+=v; n++; mktS+=Math.exp(-10000/(v+273.15)); }
+      if(r.c) comp+=W[k];
+    }
+  }
+  const exc = findExcursions(days, lim);
+  const faults=[];
+  for(const d of days) faults.push(...dayFaults(d, lim));
+  return {
+    from, to, days, per, exc, faults,
+    coolFaults: faults.filter(f=>f.kind==='cool'),
+    min: n?mn:null, max: n?mx:null,
+    mean: n?sum/n:null,
+    mkt: n? (-10000/Math.log(mktS/n))-273.15 : null,
+    inPct: tot? (tot-out)/tot*100 : 0,
+    outMin: out, totMin: tot, samples, doors,
+    compPct: tot? comp/tot*100 : 0,
+    excMin: exc.reduce((a,e)=>a+evLen(e),0)
+  };
+}
+
+/* ============================================================
+   2b. FAULT DETECTION
+   Compressor called, door shut, mains healthy — and the box is
+   still warming. That is the fridge failing to cool, not use.
+   ============================================================ */
+const FAULT = {
+  minMin:30, bridge:5, rise:1.5, slope:0.5, duty:80, longMin:90, doorMin:10, mergeGap:15,
+  /* second rule: a sustained climb while the compressor is doing most of the work.
+     Catches the intermittent case — cooling, stalling, recovering, cooling again. */
+  rampMin:20, rampRise:3.0, rampDuty:50, rampDip:0.4, hardDuty:80
+};
+
+function tempOf(r){ return r.a!==null ? r.a : r.b; }
+
+function dayFaults(day, lim){
+  const ck = lim.lo+'|'+lim.hi+'|'+(lim.dual?lim.loadLo+'|'+lim.loadHi:'');
+  if(day._fk===ck) return day._faults;
+
+  const idx=new Map();
+  for(const r of day.rows) idx.set(r.m,r);
+
+  /* runs of "cooling demanded and nothing external to blame" */
+  const runs=[]; let cur=null, last=null;
+  for(const r of day.rows){
+    const t=tempOf(r);
+    /* a compressor that is running has mains, whatever a latched warning says */
+    const cooling = r.c && !r.d && t!==null;
+    const blocked = r.d || t===null;
+    if(cooling){
+      if(cur && last!==null && (r.m-last)<=FAULT.bridge) cur[1]=r.m;
+      else { if(cur) runs.push(cur); cur=[r.m,r.m]; }
+      last=r.m;
+    }else if(blocked){
+      if(cur){ runs.push(cur); cur=null; last=null; }
+    }
+  }
+  if(cur) runs.push(cur);
+
+  const list=[];
+  for(const [a,b] of runs){
+    const seg=[];
+    for(let m=a;m<=b;m++){ const r=idx.get(m); if(r && tempOf(r)!==null) seg.push(r); }
+    if(seg.length<FAULT.minMin) continue;
+    const duty = seg.filter(r=>r.c).length/seg.length*100;
+    if(duty<FAULT.duty) continue;
+    const t0=tempOf(seg[0]), t1v=tempOf(seg[seg.length-1]);
+    const rise=t1v-t0, hrs=(b-a+1)/60;
+    let peak=-Infinity; for(const r of seg){ const t=tempOf(r); if(t>peak) peak=t; }
+    if(rise>=FAULT.rise && rise/hrs>=FAULT.slope)
+      list.push({kind:'cool', date:day.date, start:a, end:b, rise, peak, duty, from:t0, to:t1v, why:'Not cooling'});
+    else if((b-a+1)>=FAULT.longMin && rise>-0.5 && peak>lim.hi)
+      list.push({kind:'cool', date:day.date, start:a, end:b, rise, peak, duty, from:t0, to:t1v, why:'No pull-down'});
+  }
+
+  /* rule B — a rise the compressor could not hold back */
+  const R=day.rows;
+  for(let i=0;i<R.length-1;i++){
+    if(tempOf(R[i])===null) continue;
+    let peak=tempOf(R[i]), pk=i, j=i;
+    while(j+1<R.length && tempOf(R[j+1])!==null && tempOf(R[j+1])>=peak-FAULT.rampDip){
+      j++;
+      const t=tempOf(R[j]); if(t>peak){ peak=t; pk=j; }
+    }
+    const rise=peak-tempOf(R[i]), len=R[pk].m-R[i].m;
+    if(rise>=FAULT.rampRise && len>=FAULT.rampMin){
+      const seg=R.slice(i,pk+1);
+      const duty=seg.filter(r=>r.c).length/seg.length*100;
+      const blocked=seg.some(r=>r.d);
+      if(duty>=FAULT.rampDuty && !blocked){
+        list.push({kind:'cool', date:day.date, start:R[i].m, end:R[pk].m, rise, peak,
+                   duty, from:tempOf(R[i]), to:peak,
+                   why: duty>=FAULT.hardDuty ? 'Not cooling' : 'Poor cooling'});
+      }
+      i=pk;
+    }
+  }
+  list.sort((a,b)=>a.start-b.start);
+
+  /* merge events separated by a brief off period */
+  const rank = w => w==='Not cooling'?3 : w==='No pull-down'?2 : 1;
+  const merged=[];
+  for(const e of list){
+    const p=merged[merged.length-1];
+    if(p && e.start-p.end<=FAULT.mergeGap){
+      p.end=Math.max(p.end,e.end);
+      p.peak=Math.max(p.peak,e.peak);
+      p.to=Math.max(p.to,e.to);
+      p.rise=p.to-p.from;
+      p.duty=Math.max(p.duty,e.duty);
+      if(rank(e.why)>rank(p.why)) p.why=e.why;
+    } else merged.push(Object.assign({},e));
+  }
+
+  /* door left open — explains a warm-up that is not the fridge's fault */
+  let d0=null, prev=null;
+  for(const r of day.rows){
+    if(r.d){ if(d0===null) d0=r.m; prev=r.m; }
+    else if(d0!==null){
+      if(prev-d0+1>=FAULT.doorMin) merged.push({kind:'door', date:day.date, start:d0, end:prev, why:'Door left open'});
+      d0=null;
+    }
+  }
+  if(d0!==null && prev-d0+1>=FAULT.doorMin)
+    merged.push({kind:'door', date:day.date, start:d0, end:prev, why:'Door left open'});
+
+  merged.sort((x,y)=>x.start-y.start);
+  day._fk=ck; day._faults=merged;
+  return merged;
+}
+
+/* every flagged day in memory, not just the current selection */
+function allFaultDays(){
+  const out=[];
+  for(const k of [...DAYS.keys()].sort()){
+    const f=dayFaults(DAYS.get(k), LIMITS).filter(e=>e.kind==='cool');
+    if(f.length) out.push({date:k, events:f});
+  }
+  return out;
+}
+
+/* ============================================================
+   3. RENDER · summary
+   ============================================================ */
+
+function render(){
+  VIEW = buildView();
+  if(!VIEW) return;
+  const rangeKey = VIEW.from+'|'+VIEW.to;
+  if(render._range !== rangeKey){
+    ZOOM=null; render._range=rangeKey;
+    if(CAL.ym && VIEW.from.slice(0,7)!==CAL.ym){ CAL.ym=VIEW.from.slice(0,7); buildCalendar(); }
+  }
+  const v = VIEW, lim = LIMITS;
+
+  const autoTitle = (META.customer || 'Temperature record') + (META.job ? '  ·  Job '+META.job : '');
+  if(document.activeElement !== $('#jobName')) $('#jobName').textContent = META.title || autoTitle;
+  $('#phTitle').textContent = META.title || autoTitle;
+  $('#phDate').textContent  = 'Limits '+limText(lim)+' · printed '+fmtDate(iso(new Date()));
+
+  const single = v.from===v.to;
+  $('#rangeLbl').innerHTML = single
+    ? '<b>'+fmtDate(v.from)+'</b>'
+    : '<b>'+fmtDate(v.from)+'</b> to <b>'+fmtDate(v.to)+'</b>';
+  const expect = v.days.length*1440;
+  $('#cover').innerHTML = v.days.length+' day'+(v.days.length===1?'':'s')+' · '+v.samples.toLocaleString()+
+    ' readings'+(v.totMin<expect ? ' · <b>'+Math.round(v.totMin/expect*100)+'% coverage</b>' : '');
+
+  const clean = v.exc.length===0 && v.coolFaults.length===0;
+  const vd=$('#verdict');
+  vd.className = 'verdict '+(clean?'ok':'bad');
+  if(v.coolFaults.length){
+    const worst=v.coolFaults.slice().sort((a,b)=>b.rise-a.rise)[0];
+    $('#verdictTxt').textContent =
+      v.coolFaults.length+' cooling fault'+(v.coolFaults.length===1?'':'s')+' in this period — compressor running, door shut, temperature rose '+
+      worst.rise.toFixed(1)+' °C to '+t1(worst.peak)+' °C'+
+      (v.exc.length? ' · '+v.exc.length+' excursion'+(v.exc.length===1?'':'s'):'');
+    return renderRest();
+  }
+  $('#verdictTxt').textContent = clean
+    ? 'In range for the whole period — no excursion longer than '+Math.max(1,lim.minDur|0)+' min'
+    : v.exc.length+' excursion'+(v.exc.length===1?'':'s')+' outside '+limText(lim)+', '+dur(v.excMin)+' in total';
+  return renderRest();
+
+  function renderRest(){
+  const LS = limSpan(lim);
+  const cls = x => (x===null?'':(x<LS.lo||x>LS.hi)?'bad':'ok');
+  $('#stats').innerHTML = [
+    st('Minimum', t1(v.min), '°C', cls(v.min)),
+    st('Maximum', t1(v.max), '°C', cls(v.max)),
+    st('Mean',    t1(v.mean),'°C', ''),
+    st('MKT',     t1(v.mkt), '°C', cls(v.mkt)),
+    st('Time in range', pctTxt(v.inPct, v.outMin), '%', v.outMin===0?'ok':(v.inPct>=99?'warn':'bad')),
+    st('Time out',  v.outMin?dur(v.outMin):'0 min','', v.outMin?'bad':'ok'),
+    st('Door openings', v.days.some(d=>d.hasDoor!==false)? String(v.doors) : '—', '', ''),
+    st('Compressor duty', v.days.some(d=>d.hasComp!==false)? v.compPct.toFixed(0) : '—',
+       v.days.some(d=>d.hasComp!==false)? '%' : '', '')
+  ].join('');
+
+  renderInstrument();
+  renderMixed();
+  renderClock();
+  renderPower();
+  updateDayNav();
+  renderAlert();
+  renderFaults();
+  renderRtEvents();
+  renderExcursions();
+  renderDayTable();
+  drawChart();
+  updateZoomUi();
+  markCalendar();
+  }
+}
+/* an excursion of one minute in a month still isn't 100% */
+function pctTxt(pct, out){
+  if(out===0) return '100.0';
+  return pct>99.9 ? '99.9+' : pct.toFixed(1);
+}
+/* a standing warning about every flagged day in memory, not just the one on screen */
+function renderAlert(){
+  const flagged = allFaultDays();
+  const card=$('#alertCard');
+  if(!flagged.length){ card.hidden=true; return; }
+  card.hidden=false;
+  const all = flagged.flatMap(d=>d.events);
+  const nEv = all.length;
+  const hard = all.filter(e=>e.why!=='Poor cooling').length;
+  $('#alertTitle').textContent = 'Possible cooling fault on '+flagged.length+' day'+(flagged.length===1?'':'s');
+  const worst = all.slice().sort((a,b)=>b.rise-a.rise)[0];
+  const first = flagged[0].date;
+  const spanNote = flagged.length>1
+    ? ' First seen <b>'+fmtDate(first)+'</b>, most recent <b>'+fmtDate(flagged[flagged.length-1].date)+'</b>.'
+    : '';
+  $('#alertBody').innerHTML =
+    nEv+' period'+(nEv===1?'':'s')+' where the compressor was running with the door shut and mains healthy, '+
+    'and the temperature climbed anyway'+(hard&&hard<nEv? ' — '+hard+' with the compressor running almost continuously':'')+
+    '. The worst rose <b>'+worst.rise.toFixed(1)+' °C</b> to '+
+    '<b>'+t1(worst.peak)+' °C</b> over '+dur(worst.end-worst.start+1)+' on '+fmtDate(worst.date)+'.'+
+    spanNote+' Check the compressor, gas charge and condenser.'+
+    '<div class="dates">'+flagged.map(d=>'<button data-d="'+d.date+'">'+fmtDate(d.date)+'</button>').join('')+'</div>';
+  card.querySelectorAll('.dates button').forEach(b=>b.onclick=()=>{
+    selectDay(b.dataset.d);
+    const f=(VIEW.coolFaults||[])[0];
+    if(f){ ZOOM={a:f.start-30,b:f.end+30}; clampZoom(); updateZoomUi(); drawChart(); }
+  });
+}
+
+/* a folder should hold one controller's logs — flag anything that isn't */
+function renderMixed(){
+  const card=$('#mixedCard');
+  const byPn=new Map();
+  for(const k of [...DAYS.keys()].sort()){
+    const d=DAYS.get(k), pn=d.pn||'(not stated)';
+    if(!byPn.has(pn)) byPn.set(pn,[]);
+    byPn.get(pn).push(k);
+  }
+  if(byPn.size<2){ card.hidden=true; return; }
+  card.hidden=false;
+  const groups=[...byPn.entries()].sort((a,b)=>b[1].length-a[1].length);
+  const main=groups[0], others=groups.slice(1);
+  const odd=others.flatMap(g=>g[1]);
+  $('#mixedBody').innerHTML =
+    'Most of these logs come from controller <b class="mono">'+main[0]+'</b>. '+
+    odd.length+' file'+(odd.length===1?'':'s')+' '+(odd.length===1?'is':'are')+' from '+
+    (others.length===1?'a different controller':others.length+' other controllers')+
+    ' ('+others.map(g=>'<span class="mono">'+g[0]+'</span>').join(', ')+
+    '), so those days do not belong to this unit. Check the folder before reporting.'+
+    '<div class="dates">'+odd.map(k=>'<button data-d="'+k+'">'+fmtDate(k)+'</button>').join('')+'</div>';
+  card.querySelectorAll('.dates button').forEach(b=>b.onclick=()=>selectDay(b.dataset.d));
+}
+
+/* mains and battery warnings are worth an engineer's attention on their own */
+/* a power cut can restart the controller clock, so part of a day is logged twice */
+function renderClock(){
+  const card=$('#clkCard');
+  const days=[...DAYS.keys()].sort().filter(k=>(DAYS.get(k).clockResets||[]).length);
+  if(!days.length){ card.hidden=true; return; }
+  card.hidden=false;
+  const first=DAYS.get(days[0]).clockResets[0];
+  let n=0; for(const k of days) n+=DAYS.get(k).clockResets.length;
+  $('#clkTitle').textContent = 'Controller clock restarted — part of the day is logged twice';
+  $('#clkBody').innerHTML =
+    'The log jumps backwards in time on <b>'+days.length+'</b> day'+(days.length===1?'':'s')+
+    ' ('+n+' restart'+(n===1?'':'s')+'), so the same clock times carry two different sets of readings — '+
+    'on '+fmtDate(days[0])+' the stretch <b>'+hhmm(first.from)+' to '+hhmm(first.to)+'</b> appears twice. '+
+    'Plotted in time order the two passes interleave and the trace zig-zags on every reading. '+
+    'That spiky section is the clock, not the fridge, and any excursion or fault inside it should be read from the raw file before you report it.'+
+    '<div class="dates">'+days.map(d=>'<button data-d="'+d+'">'+fmtDate(d)+'</button>').join('')+'</div>';
+  card.querySelectorAll('.dates button').forEach(b=>b.onclick=()=>selectDay(b.dataset.d));
+}
+
+function renderPower(){
+  const card=$('#pwrCard');
+  const evs=[];
+  for(const k of [...DAYS.keys()].sort()){
+    for(const r of DAYS.get(k).rows){
+      if(!r.rt) continue;
+      const g=codeInfo(r.rt).g;
+      if(g==='power'||g==='battery'||g==='fault') evs.push({date:k, m:r.m, code:r.rt, g});
+    }
+  }
+  if(!evs.length){ card.hidden=true; return; }
+  card.hidden=false;
+  const mains = evs.filter(e=>e.code==='[41]');
+  const batt  = evs.filter(e=>e.g==='battery');
+  const sens  = evs.filter(e=>e.g==='fault');
+  const bits=[];
+  if(mains.length) bits.push('<b>'+mains.length+'</b> mains warning'+(mains.length===1?'':'s'));
+  if(batt.length)  bits.push('<b>'+batt.length+'</b> battery warning'+(batt.length===1?'':'s'));
+  if(sens.length)  bits.push('<b>'+sens.length+'</b> sensor failure warning'+(sens.length===1?'':'s'));
+  $('#pwrTitle').textContent='Mains and battery warnings logged';
+  const days=[...new Set(evs.map(e=>e.date))];
+  $('#pwrBody').innerHTML = bits.join(', ')+
+    '. The compressor kept cycling through these, so the unit had power — this usually points at the backup battery '+
+    'or mains detection rather than a real outage. Worth checking the battery before it masks a genuine failure.'+
+    '<div class="dates">'+days.map(d=>'<button data-d="'+d+'">'+fmtDate(d)+'</button>').join('')+'</div>';
+  card.querySelectorAll('.dates button').forEach(b=>b.onclick=()=>selectDay(b.dataset.d));
+}
+
+function renderFaults(){
+  const v=VIEW, t=$('#faultTbl'), card=$('#faultCard');
+  const list=v.faults||[];
+  if(!list.length){ card.hidden=true; return; }
+  card.hidden=false;
+  const nCool=v.coolFaults.length;
+  $('#faultCount').textContent = nCool ? nCool+' cooling fault'+(nCool===1?'':'s') : 'door events only';
+  const rows=list.map((e,i)=>{
+    const len=evLen(e);
+    return '<tr class="click" data-i="'+i+'">'+
+      '<td class="txt">'+fmtDate(e.date)+'</td>'+
+      '<td><span class="pill '+(e.kind!=='cool'?'door':(e.why==='Poor cooling'?'weak':'cool'))+'">'+e.why+'</span></td>'+
+      '<td>'+hhmm(e.start)+'</td><td>'+hhmm(e.end)+'</td><td>'+dur(len)+'</td>'+
+      '<td>'+(e.kind==='cool'? t1(e.from)+' → <b>'+t1(e.to)+'</b>' : '—')+'</td>'+
+      '<td>'+(e.kind==='cool'? '<b>'+(e.rise>=0?'+':'')+e.rise.toFixed(1)+'</b>' : '—')+'</td>'+
+      '<td>'+(e.kind==='cool'? Math.round(e.duty)+'%' : '—')+'</td></tr>';
+  }).join('');
+  t.innerHTML='<thead><tr><th>Date</th><th>Finding</th><th>From</th><th>To</th><th>Duration</th>'+
+    '<th>Temperature</th><th>Change °C</th><th>Compressor on</th></tr></thead><tbody>'+rows+'</tbody>';
+  t.querySelectorAll('tr.click').forEach(tr=>tr.onclick=()=>{
+    const e=(VIEW.faults||[])[+tr.dataset.i]; if(!e) return;
+    selectDay(e.date);
+    const padm=Math.max(20, Math.round((e.end-e.start)*0.25));
+    ZOOM={a:e.start-padm, b:e.end+padm}; clampZoom(); updateZoomUi(); drawChart();
+  });
+}
+
+function st(k,val,u,c){
+  return '<div class="st '+c+'"><div class="k">'+k+'</div><div class="v">'+val+
+         (u?' <small>'+u+'</small>':'')+'</div></div>';
+}
+
+/* the 24-range export carries event codes with no key — show them, don't guess */
+/* nearest actual reading either side of a moment, if the trace is close enough */
+function traceAt(day, m){
+  const rows=day.rows, tol=Math.max(2, (day.iv||1)*3);
+  let lo=0, hi=rows.length-1, i=0;
+  while(lo<=hi){ const mid=(lo+hi)>>1; if(rows[mid].m<m){ i=mid; lo=mid+1; } else hi=mid-1; }
+  let best=null, bd=Infinity;
+  for(let j=Math.max(0,i-4); j<Math.min(rows.length,i+5); j++){
+    const r=rows[j];
+    if(r.ev || r.a===null) continue;
+    const d=Math.abs(r.m-m);
+    if(d<bd){ bd=d; best=r; }
+  }
+  return (best && bd<=tol) ? {a:best.a, b:best.b} : null;
+}
+
+function renderRtEvents(){
+  const card=$('#rtCard'), t=$('#rtTbl');
+  const list=[];
+  for(const d of VIEW.days) for(const r of d.rows){
+    if(!r.rt) continue;
+    let a = (r.a!==null?r.a:(r.ra!==undefined?r.ra:null));
+    let b = (r.b!==null?r.b:(r.rb!==undefined?r.rb:null));
+    let approx=false;
+    /* An event row carries no reading of its own — the door and power messages sit
+       between samples, and a boot entry is stamped before the probes are read. Where
+       the trace covers that moment, show what the fridge was actually doing, marked
+       so nobody mistakes it for a value the controller logged. */
+    if(a===null && b===null){
+      const near=traceAt(d, r.m);
+      if(near){ a=near.a; b=near.b; approx=true; }
+    }
+    list.push({date:d.date, m:r.m, code:r.rt, a, b, e:r.e, approx});
+  }
+  if(!list.length){ card.hidden=true; return; }
+  card.hidden=false;
+  const counts={};
+  list.forEach(x=>counts[x.code]=(counts[x.code]||0)+1);
+  const CAP=300;
+  const showCode = list.some(x=>/^\[/.test(x.code));
+  $('#rtCount').textContent = list.length+' logged · '+Object.keys(counts).length+' distinct';
+  const rows=list.slice(0,CAP).map(x=>{
+    const ci=codeInfo(x.code);
+    return '<tr class="click" data-d="'+x.date+'" data-m="'+x.m+'">'+
+      '<td class="txt">'+fmtDate(x.date)+'</td><td>'+hhmm(x.m)+'</td>'+
+      '<td class="txt"><span class="pill ev-'+ci.g+'">'+ci.d+'</span></td>'+
+      (showCode? '<td>'+x.code+'</td>' : '')+
+      '<td'+(x.approx?' class="approx"':'')+'>'+(x.approx&&x.a!==null?'≈':'')+t1(x.a)+'</td>'+
+      '<td'+(x.approx?' class="approx"':'')+'>'+(x.approx&&x.b!==null?'≈':'')+t1(x.b)+'</td>'+
+      (HAS_T3? '<td>'+(x.e===null||x.e===undefined?'—':t1(x.e))+'</td>' : '')+'</tr>';
+  }).join('');
+  const cols = 4 + (showCode?1:0) + (HAS_T3?1:0);
+  const more = list.length>CAP ? '<tr><td colspan="'+cols+'" class="txt" style="color:var(--txt-3)">Showing the first '+CAP+' of '+list.length.toLocaleString()+'.</td></tr>' : '';
+  t.innerHTML='<thead><tr><th>Date</th><th>Time</th><th>Event</th>'+
+    (showCode?'<th>Code</th>':'')+
+    '<th>'+CHL.a+' °C</th><th>'+CHL.b+' °C</th>'+
+    (HAS_T3?'<th>'+CHL.e+' °C</th>':'')+'</tr></thead><tbody>'+rows+more+'</tbody>';
+  const anyApprox = list.slice(0,CAP).some(x=>x.approx);
+  $('#rtFoot').innerHTML = showCode
+    ? "Tap a row to zoom to it. Codes decoded from the table in Labcold's own CSV Viewer."
+    : 'Tap a row to zoom to it.'+
+      (anyApprox? ' A <b>≈</b> value was not logged with the entry — the controller records no temperature with a door or power message, '+
+                  'and stamps 0.0 or 60.0 before the probes are read. It is the nearest reading from the trace, so it is what the fridge '+
+                  'was doing at that moment rather than what the controller wrote. A dash means the trace does not cover it.' : '');
+  t.querySelectorAll('tr.click').forEach(tr=>tr.onclick=()=>{
+    selectDay(tr.dataset.d);
+    const m=+tr.dataset.m;
+    ZOOM={a:m-20,b:m+20}; clampZoom(); updateZoomUi(); drawChart();
+  });
+}
+
+function renderExcursions(){
+  const v=VIEW, t=$('#excTbl');
+  $('#excCount').textContent = v.exc.length ? v.exc.length.toLocaleString()+' logged' : 'none';
+  if(!v.exc.length){
+    t.innerHTML='<tbody><tr><td class="empty txt">Nothing outside '+limText(LIMITS)+
+      ' °C in this period.</td></tr></tbody>';
+    return;
+  }
+  const CAP = 300;
+  const shown = v.exc.slice(0,CAP);
+  const rows = shown.map((e,i)=>{
+    const len=evLen(e);
+    return '<tr class="click" data-i="'+i+'" data-d="'+e.date+'"><td class="txt">'+fmtDate(e.date)+'</td>'+
+      '<td><span class="pill '+(e.k==='a'?'t1':e.k==='b'?'t2':'t3')+'">'+e.ch+'</span></td>'+
+      '<td><span class="pill '+(e.side==='High'?'bad':'warn')+'">'+e.side+'</span></td>'+
+      '<td>'+hhmm(e.start)+'</td><td>'+hhmm(e.end)+'</td>'+
+      '<td>'+dur(len)+'</td><td><b>'+t1(e.peak)+' °C</b></td>'+
+      '<td>'+(e.side==='High'? '+'+(e.peak-limOf(LIMITS,e.k).hi).toFixed(1) : (e.peak-limOf(LIMITS,e.k).lo).toFixed(1))+'</td></tr>';
+  }).join('');
+  const more = v.exc.length>CAP
+    ? '<tr><td colspan="8" class="txt" style="color:var(--txt-3)">Showing the first '+CAP+' of '+
+      v.exc.length.toLocaleString()+'. Widen the limits or raise the ignore-under setting to cut the noise.</td></tr>'
+    : '';
+  t.innerHTML = '<thead><tr><th>Date</th><th>Sensor</th><th>Type</th><th>From</th><th>To</th>'+
+                '<th>Duration</th><th>Peak</th><th>Over by</th></tr></thead><tbody>'+rows+more+'</tbody>';
+  t.querySelectorAll('tr.click').forEach(tr=>tr.onclick=()=>focusExcursion(+tr.dataset.i));
+}
+
+/* jump to the day and zoom to the event with a little context either side */
+function focusExcursion(i){
+  const e = VIEW && VIEW.exc[i];
+  if(!e) return;
+  selectDay(e.date);
+  const padm = Math.max(20, (e.end-e.start)*2);
+  ZOOM = {a:e.start-padm, b:e.end+padm+1};
+  clampZoom(); updateZoomUi(); drawChart();
+}
+
+function renderDayTable(){
+  const v=VIEW, t=$('#dayTbl');
+  const rows = v.per.map(p=>{
+    const s=p.s, bad = s.bad;
+    return '<tr class="click" data-d="'+p.date+'"><td class="txt">'+fmtDate(p.date)+'</td>'+
+      '<td class="txt">'+['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][fromIso(p.date).getDay()]+'</td>'+
+      '<td>'+t1(s.min)+'</td><td>'+t1(s.max)+'</td><td>'+t1(s.mean)+'</td><td>'+t1(s.mkt)+'</td>'+
+      '<td>'+pctTxt(s.inPct,s.outMin)+'%</td><td>'+(s.outMin?dur(s.outMin):'—')+'</td>'+
+      '<td>'+s.doors+'</td><td>'+s.compPct.toFixed(0)+'%</td>'+
+      '<td>'+(dayFaults(DAYS.get(p.date),LIMITS).some(e=>e.kind==='cool')
+              ? '<span class="pill cool">Cooling fault</span>'
+              : '<span class="pill '+(bad?'bad':'ok')+'">'+(bad?'Out':'In range')+'</span>')+'</td></tr>';
+  }).join('');
+  t.innerHTML='<thead><tr><th>Date</th><th>Day</th><th>Min</th><th>Max</th><th>Mean</th><th>MKT</th>'+
+    '<th>In range</th><th>Time out</th><th>Doors</th><th>Comp.</th><th></th></tr></thead><tbody>'+rows+'</tbody>';
+  t.querySelectorAll('tr.click').forEach(tr=>tr.onclick=()=>selectDay(tr.dataset.d));
+}
+
+/* ============================================================
+   4. RENDER · chart (canvas, DPR aware, min/max decimation)
+   ============================================================ */
+
+const cv = $('#chart'), cx = cv.getContext('2d');
+const FONT_S  = '11px ui-monospace, Menlo, Consolas, monospace';
+const FONT_XS = '10px ui-monospace, Menlo, Consolas, monospace';
+let PLOT = null;
+let ZOOM = null;              // {a,b} visible window in minutes from the start of the range
+let DRAG = null;              // {x0,x1} while sweeping out a zoom selection
+let PINCH = null;
+
+/* full extent of the current date selection, in minutes */
+function fullSpan(){
+  if(!VIEW) return 1440;
+  const d0=fromIso(VIEW.from).getTime();
+  return ((fromIso(VIEW.to).getTime()-d0)/60000)+1440;
+}
+/* the window the data actually occupies — a two hour bench capture should not
+   be drawn across an empty 24 hour axis */
+function dataExtent(){
+  if(!VIEW) return {a:0,b:1440};
+  const d0=fromIso(VIEW.from).getTime();
+  let a=Infinity,b=-Infinity;
+  for(const d of VIEW.days){
+    const base=(fromIso(d.date).getTime()-d0)/60000;
+    if(!d.rows.length) continue;
+    const iv=d.iv||1;
+    a=Math.min(a, base+d.rows[0].m);
+    b=Math.max(b, base+d.rows[d.rows.length-1].m+iv);
+  }
+  const S=fullSpan();
+  if(a===Infinity) return {a:0,b:S};
+  const padm=Math.max(2,(b-a)*0.02);
+  return {a:Math.max(0,a-padm), b:Math.min(S,b+padm)};
+}
+function clampZoom(){
+  const E=dataExtent();
+  if(!ZOOM) return;
+  let {a,b}=ZOOM;
+  if(b-a < 10){ const c=(a+b)/2; a=c-5; b=c+5; }     // never tighter than 10 minutes
+  if(a<E.a){ b+=(E.a-a); a=E.a; }
+  if(b>E.b){ a-=(b-E.b); b=E.b; }
+  if(a<E.a) a=E.a;
+  ZOOM = (a<=E.a && b>=E.b) ? null : {a,b};
+}
+function zoomBy(factor, focus){
+  const z=ZOOM||dataExtent();
+  const f=(focus===undefined)?(z.a+z.b)/2:focus;
+  const na=f-(f-z.a)*factor, nb=f+(z.b-f)*factor;
+  ZOOM={a:na,b:nb}; clampZoom(); updateZoomUi(); drawChart();
+}
+function panBy(frac){
+  const S=fullSpan();
+  if(!ZOOM) return;
+  const w=ZOOM.b-ZOOM.a, d=w*frac;
+  ZOOM={a:ZOOM.a+d, b:ZOOM.b+d}; clampZoom(); updateZoomUi(); drawChart();
+}
+function resetZoom(){ ZOOM=null; updateZoomUi(); drawChart(); }
+
+function updateZoomUi(){
+  const z=ZOOM||dataExtent();
+  const lbl=$('#zoomLbl');
+  if(!lbl) return;
+  if(!ZOOM){ lbl.textContent='Full range'; }
+  else{
+    const d0=fromIso(VIEW.from).getTime();
+    const s=new Date(d0+z.a*60000), e=new Date(d0+z.b*60000);
+    const sameDay = iso(s)===iso(new Date(d0+(z.b-1)*60000));
+    lbl.textContent = sameDay
+      ? fmtDate(iso(s))+'  '+pad2(s.getHours())+':'+pad2(s.getMinutes())+'–'+pad2(e.getHours())+':'+pad2(e.getMinutes())
+      : fmtDate(iso(s))+' '+pad2(s.getHours())+':'+pad2(s.getMinutes())+' → '+fmtDate(iso(e))+' '+pad2(e.getHours())+':'+pad2(e.getMinutes());
+  }
+  $('#btnReset').disabled = !ZOOM;
+  $('#btnPanL').disabled = !ZOOM;
+  $('#btnPanR').disabled = !ZOOM;
+  $('#btnOut').disabled  = !ZOOM;
+}
+
+/* tick step in minutes, aiming for a label every ~95px */
+const TICKS=[1,2,5,10,15,30,60,120,180,360,720,1440,2880,4320,10080,20160,43200];
+function tickStep(span, px){
+  const want = span/Math.max(2, px/95);
+  for(const t of TICKS) if(t>=want) return t;
+  return TICKS[TICKS.length-1];
+}
+
+function drawChart(){
+  if(!VIEW) return;
+  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  const W = cv.clientWidth, H = cv.clientHeight;
+  cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr);
+  cx.setTransform(dpr,0,0,dpr,0,0);
+  cx.clearRect(0,0,W,H);
+
+  const v=VIEW, lim=LIMITS;
+  const pad = {l:44, r:14, t:12, b:SHOW.comp?46:32};
+  const pw = W-pad.l-pad.r, ph = H-pad.t-pad.b;
+  if(pw<40||ph<40) return;
+
+  const d0 = fromIso(v.from).getTime();
+  const spanMin = fullSpan();
+  const absMin = day => (fromIso(day).getTime()-d0)/60000;
+  const EXT = dataExtent();
+  const vA = ZOOM ? ZOOM.a : EXT.a;
+  const vB = ZOOM ? ZOOM.b : EXT.b;
+  const vSpan = vB-vA;
+
+  /* y domain: follow whatever is actually on screen once zoomed in */
+  let dLo=Infinity, dHi=-Infinity;
+  if(ZOOM){
+    for(const d of v.days){
+      const base=absMin(d.date);
+      if(base+1440 < vA || base > vB) continue;
+      for(const r of d.rows){
+        const m=base+r.m; if(m<vA||m>vB) continue;
+        if(SHOW.t1 && r.a!==null){ if(r.a<dLo)dLo=r.a; if(r.a>dHi)dHi=r.a; }
+        if(SHOW.t2 && r.b!==null){ if(r.b<dLo)dLo=r.b; if(r.b>dHi)dHi=r.b; }
+        if(SHOW.t3 && r.e!==null && r.e!==undefined){ if(r.e<dLo)dLo=r.e; if(r.e>dHi)dHi=r.e; }
+      }
+    }
+  }
+  let lo, hi;
+  if(ZOOM && dLo!==Infinity){
+    lo=dLo; hi=dHi;
+    if(SHOW.band){ const B=limSpan(lim); lo=Math.min(lo,B.lo); hi=Math.max(hi,B.hi); }
+  }else{
+    const B=limSpan(lim);
+    lo = Math.min(v.min!==null?v.min:B.lo, B.lo);
+    hi = Math.max(v.max!==null?v.max:B.hi, B.hi);
+  }
+  if(META.setpoint!==null){ lo=Math.min(lo,META.setpoint); hi=Math.max(hi,META.setpoint); }
+  if(hi-lo < 0.5){ const c=(hi+lo)/2; lo=c-0.25; hi=c+0.25; }
+  const padY = Math.max((hi-lo)*0.12, 0.3);
+  lo-=padY; hi+=padY;
+
+  const X = m => pad.l + ((m-vA)/vSpan)*pw;
+  const Y = t => pad.t + (1-(t-lo)/(hi-lo))*ph;
+
+  /* --- limit band --- */
+  if(SHOW.band){
+    const yTop=Y(Math.min(lim.hi,hi)), yBot=Y(Math.max(lim.lo,lo));
+    cx.fillStyle='rgba(46,163,199,.09)';
+    cx.fillRect(pad.l, Math.max(pad.t,yTop), pw, Math.max(0,Math.min(pad.t+ph,yBot)-Math.max(pad.t,yTop)));
+    cx.strokeStyle='rgba(46,163,199,.55)'; cx.lineWidth=1; cx.setLineDash([4,3]);
+    [lim.lo,lim.hi].forEach(t=>{
+      if(t<lo||t>hi) return;
+      cx.beginPath(); cx.moveTo(pad.l,Y(t)+.5); cx.lineTo(W-pad.r,Y(t)+.5); cx.stroke();
+    });
+    /* the load probe is held tighter, so mark its band in the load colour */
+    if(lim.dual){
+      cx.strokeStyle='rgba(128,70,192,.5)'; cx.setLineDash([2,3]);
+      [lim.loadLo,lim.loadHi].forEach(t=>{
+        if(t<lo||t>hi) return;
+        cx.beginPath(); cx.moveTo(pad.l,Y(t)+.5); cx.lineTo(W-pad.r,Y(t)+.5); cx.stroke();
+      });
+    }
+    cx.setLineDash([]);
+  }
+
+  /* --- y grid --- */
+  const step = niceStep((hi-lo)/5);
+  cx.font=FONT_S; cx.textAlign='right'; cx.textBaseline='middle';
+  for(let t=Math.ceil(lo/step)*step; t<=hi; t+=step){
+    const y=Math.round(Y(t))+.5;
+    cx.strokeStyle='#eef3f6'; cx.lineWidth=1;
+    cx.beginPath(); cx.moveTo(pad.l,y); cx.lineTo(W-pad.r,y); cx.stroke();
+    cx.fillStyle='#8fa3b3';
+    cx.fillText(t.toFixed(step<1?1:0), pad.l-7, y);
+  }
+
+  /* --- set point --- */
+  if(META.setpoint!==null && META.setpoint>=lo && META.setpoint<=hi){
+    cx.strokeStyle='#8fa3b3'; cx.lineWidth=1; cx.setLineDash([2,4]);
+    const y=Math.round(Y(META.setpoint))+.5;
+    cx.beginPath(); cx.moveTo(pad.l,y); cx.lineTo(W-pad.r,y); cx.stroke(); cx.setLineDash([]);
+  }
+
+  /* --- x ticks --- */
+  cx.textAlign='center'; cx.textBaseline='top';
+  const st = tickStep(vSpan, pw);
+  const first = Math.ceil(vA/st)*st;
+  for(let m=first; m<=vB; m+=st){
+    const x=Math.round(X(m))+.5;
+    const midnight = (((m%1440)+1440)%1440)===0;
+    cx.strokeStyle = midnight ? '#dde7ee' : '#f1f5f8';
+    cx.beginPath(); cx.moveTo(x,pad.t); cx.lineTo(x,pad.t+ph); cx.stroke();
+    const key = iso(new Date(d0 + Math.floor(m/1440)*86400000));
+    cx.fillStyle='#8fa3b3'; cx.font=FONT_S;
+    if(st>=1440){
+      cx.fillText(fmtDateShort(key), x, pad.t+ph+6);
+    }else{
+      cx.fillText(hhmm(((m%1440)+1440)%1440), x, pad.t+ph+6);
+      if(midnight && vSpan>1440){ cx.fillStyle='#5b7387'; cx.font=FONT_XS; cx.fillText(fmtDateShort(key), x, pad.t+ph+18); }
+    }
+  }
+  /* when a whole day fits between ticks, still mark the date once */
+  if(st<1440 && vSpan<=1440){
+    const key=iso(new Date(d0+Math.floor(vA/1440)*86400000));
+    cx.fillStyle='#5b7387'; cx.font=FONT_XS; cx.textAlign='left';
+    cx.fillText(fmtDate(key), pad.l+2, pad.t+ph+18);
+    cx.textAlign='center';
+  }
+
+  /* --- door + compressor --- */
+  if(SHOW.door || SHOW.comp){
+    for(const d of v.days){
+      const base=absMin(d.date);
+      if(base+1440 < vA || base > vB) continue;
+      let runStart=null;
+      for(let i=0;i<d.rows.length;i++){
+        const r=d.rows[i], m=base+r.m;
+        if(SHOW.door && r.d && m>=vA && m<=vB){
+          const bw = Math.max(1, pw/vSpan);
+          if(vSpan>4320){
+            /* across many days full-height bars bury the trace — tick them instead */
+            cx.fillStyle='rgba(168,106,6,.75)';
+            cx.fillRect(X(m)-.5, pad.t+ph-7, bw, 7);
+          }else{
+            cx.fillStyle = bw>4 ? 'rgba(168,106,6,.22)' : 'rgba(168,106,6,.8)';
+            cx.fillRect(X(m)-.5, pad.t, bw, ph);
+          }
+        }
+        if(SHOW.comp){
+          if(r.c && runStart===null) runStart=m;
+          if((!r.c||i===d.rows.length-1) && runStart!==null){
+            const x0=Math.max(pad.l,X(runStart)), x1=Math.min(W-pad.r,X(m));
+            if(x1>pad.l && x0<W-pad.r){
+              cx.fillStyle='rgba(120,150,168,.55)';
+              cx.fillRect(x0, pad.t+ph+16, Math.max(1,x1-x0), 8);
+            }
+            runStart=null;
+          }
+        }
+      }
+    }
+    if(SHOW.comp){
+      cx.textAlign='left'; cx.fillStyle='#8fa3b3'; cx.font=FONT_XS;
+      cx.fillText('compressor', pad.l, pad.t+ph+26);
+    }
+  }
+
+  /* --- cooling-fault windows --- */
+  for(const e of (v.coolFaults||[])){
+    const base=absMin(e.date);
+    const a=Math.max(vA, base+e.start), b=Math.min(vB, base+e.end);
+    if(b<=a) continue;
+    const x0=X(a), x1=X(b);
+    cx.fillStyle='rgba(194,42,48,.10)';
+    cx.fillRect(x0, pad.t, Math.max(2,x1-x0), ph);
+    cx.fillStyle='rgba(194,42,48,.85)';
+    cx.fillRect(x0, pad.t, Math.max(2,x1-x0), 3);
+    if(x1-x0>90){
+      cx.fillStyle='#c22a30'; cx.font=FONT_XS; cx.textAlign='left'; cx.textBaseline='top';
+      cx.fillText('not cooling', x0+5, pad.t+6);
+      cx.textAlign='center'; cx.textBaseline='top';
+    }
+  }
+
+  PLOT = {pad,pw,ph,X,Y,lo,hi,vA,vB,vSpan,d0,absMin,W,H,spanMin};
+  if(SHOW.t1) line('a', getComputedStyle(document.body).getPropertyValue('--t1').trim()||'#1a6fb5');
+  if(SHOW.t2) line('b', getComputedStyle(document.body).getPropertyValue('--t2').trim()||'#8046c0');
+  if(SHOW.t3 && HAS_T3) line('e', getComputedStyle(document.body).getPropertyValue('--t3').trim()||'#0d8a6a');
+
+  cx.strokeStyle='#d6e1e9'; cx.lineWidth=1;
+  cx.strokeRect(pad.l+.5, pad.t+.5, pw-1, ph-1);
+
+  /* --- drag selection overlay --- */
+  if(DRAG && Math.abs(DRAG.x1-DRAG.x0)>2){
+    const a=Math.min(DRAG.x0,DRAG.x1), b=Math.max(DRAG.x0,DRAG.x1);
+    cx.fillStyle='rgba(46,163,199,.16)';
+    cx.fillRect(a, pad.t, b-a, ph);
+    cx.strokeStyle='rgba(27,127,158,.8)'; cx.lineWidth=1;
+    cx.beginPath(); cx.moveTo(a+.5,pad.t); cx.lineTo(a+.5,pad.t+ph);
+    cx.moveTo(b+.5,pad.t); cx.lineTo(b+.5,pad.t+ph); cx.stroke();
+  }
+
+  const shownReadings = ZOOM ? countVisible() : v.samples;
+  const ivs=[...new Set(v.days.map(d=>d.iv||1))];
+  $('#resLbl').textContent = shownReadings.toLocaleString()+' readings · '+
+    (ivs.length===1? ivFmt(ivs[0])+' interval' : 'mixed interval');
+
+  function countVisible(){
+    let n=0;
+    for(const d of v.days){
+      const base=absMin(d.date);
+      if(base+1440<vA||base>vB) continue;
+      for(const r of d.rows){ const m=base+r.m; if(m>=vA&&m<=vB) n++; }
+    }
+    return n;
+  }
+
+  function line(key, colour){
+    const buckets = Math.max(1, Math.floor(pw));
+    const mins = new Float64Array(buckets).fill(Infinity);
+    const maxs = new Float64Array(buckets).fill(-Infinity);
+    const sums = new Float64Array(buckets);
+    const cnts = new Int32Array(buckets);
+    let pts = 0;
+    for(const d of v.days){
+      const base = absMin(d.date);
+      if(base+1440 < vA || base > vB) continue;
+      for(const r of d.rows){
+        const val = r[key]; if(val===null) continue;
+        const m = base+r.m;
+        if(m<vA||m>vB) continue;
+        let b = Math.floor(((m-vA)/vSpan)*buckets);
+        if(b<0) b=0; if(b>=buckets) b=buckets-1;
+        if(val<mins[b]) mins[b]=val;
+        if(val>maxs[b]) maxs[b]=val;
+        sums[b]+=val; cnts[b]++; pts++;
+      }
+    }
+    const banded = (pts/buckets) >= 3;
+
+    if(banded){
+      cx.fillStyle = hexA(colour, .20);
+      const runs=[]; let run=null;
+      for(let b=0;b<buckets;b++){
+        if(!cnts[b]){ if(run){runs.push(run); run=null;} continue; }
+        if(!run) run={s:b,e:b}; else run.e=b;
+      }
+      if(run) runs.push(run);
+      for(const rn of runs){
+        cx.beginPath();
+        for(let b=rn.s;b<=rn.e;b++){ if(!cnts[b]) continue;
+          const x=pad.l+b+.5; if(b===rn.s) cx.moveTo(x,Y(maxs[b])); else cx.lineTo(x,Y(maxs[b])); }
+        for(let b=rn.e;b>=rn.s;b--){ if(!cnts[b]) continue; cx.lineTo(pad.l+b+.5, Y(mins[b])); }
+        cx.closePath(); cx.fill();
+      }
+    }
+
+    /* enough room per point? draw the true samples, with dots when very close in */
+    const perPx = pts/buckets;
+    cx.lineWidth = banded ? 1.3 : 1.8;
+    cx.strokeStyle = colour; cx.lineJoin='round'; cx.lineCap='round';
+    cx.beginPath();
+    let open=false, lastB=-1;
+    for(let b=0;b<buckets;b++){
+      if(!cnts[b]) continue;
+      /* zoomed in far enough that samples no longer fill every pixel column:
+         keep the line joined, and only break it at a real gap in the log */
+      if(lastB>=0 && ((b-lastB)/buckets)*vSpan > 5) open=false;
+      const x=pad.l+b+.5;
+      if(banded){
+        const y=Y(sums[b]/cnts[b]);
+        if(!open){ cx.moveTo(x,y); open=true; } else cx.lineTo(x,y);
+      }else{
+        if(!open){ cx.moveTo(x,Y(maxs[b])); open=true; }
+        if(maxs[b]-mins[b] > (hi-lo)/ph){ cx.lineTo(x,Y(maxs[b])); cx.lineTo(x,Y(mins[b])); }
+        else cx.lineTo(x, Y(sums[b]/cnts[b]));
+      }
+      lastB=b;
+    }
+    cx.stroke();
+
+    if(perPx < 0.12){            /* very zoomed in: show the individual minutes */
+      cx.fillStyle=colour;
+      for(let b=0;b<buckets;b++){
+        if(!cnts[b]) continue;
+        cx.beginPath(); cx.arc(pad.l+b+.5, Y(sums[b]/cnts[b]), 2.2, 0, 7); cx.fill();
+      }
+    }
+  }
+}
+function pad2(n){ return String(n).padStart(2,'0'); }
+function hexA(c, a){
+  c=(c||'').trim();
+  if(c[0]==='#'){
+    let h=c.slice(1);
+    if(h.length===3) h=h.split('').map(x=>x+x).join('');
+    const n=parseInt(h,16);
+    return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';
+  }
+  const m=c.match(/rgba?\(([^)]+)\)/);
+  if(m){ const p=m[1].split(',').map(s=>s.trim()); return 'rgba('+p[0]+','+p[1]+','+p[2]+','+a+')'; }
+  return 'rgba(100,120,140,'+a+')';
+}
+/* the blood bank recorder samples faster than once a minute */
+function ivFmt(iv){
+  if(iv>=1) return (Math.round(iv*10)/10)+' min';
+  return Math.round(iv*60)+' sec';
+}
+function niceStep(raw){
+  const p=Math.pow(10,Math.floor(Math.log10(Math.max(raw,1e-6))));
+  const n=raw/p;
+  return (n<1.5?1:n<3?2:n<7?5:10)*p;
+}
+
+/* ---------- crosshair ---------- */
+function readout(clientX, clientY){
+  if(!PLOT||!VIEW) return;
+  const rect=cv.getBoundingClientRect();
+  const x=clientX-rect.left, y=clientY-rect.top;
+  const P=PLOT, tip=$('#tip');
+  if(x<P.pad.l||x>P.W-P.pad.r||y<P.pad.t||y>P.pad.t+P.ph){ tip.style.opacity=0; drawChart(); return; }
+
+  const mAbs = P.vA + ((x-P.pad.l)/P.pw)*P.vSpan;
+  const dayIx = Math.floor(mAbs/1440);
+  const key = iso(new Date(P.d0 + dayIx*86400000));
+  const day = DAYS.get(key);
+  const mm = mAbs-dayIx*1440;
+
+  drawChart();
+  cx.strokeStyle='rgba(11,31,51,.35)'; cx.lineWidth=1; cx.setLineDash([3,3]);
+  cx.beginPath(); cx.moveTo(x+.5,P.pad.t); cx.lineTo(x+.5,P.pad.t+P.ph); cx.stroke(); cx.setLineDash([]);
+
+  if(!day){ tip.style.opacity=0; return; }
+  let best=null, bd=1e9;
+  for(const r of day.rows){ const dd=Math.abs(r.m-mm); if(dd<bd){bd=dd;best=r;} }
+  const tol = Math.max(2, (P.vSpan/P.pw)*4);
+  if(!best||bd>tol){ tip.style.opacity=0; return; }
+
+  [['a','--t1'],['b','--t2'],['e','--t3']].forEach(([k,c])=>{
+    if((k==='a'&&!SHOW.t1)||(k==='b'&&!SHOW.t2)||(k==='e'&&!SHOW.t3)) return;
+    if(best[k]===null||best[k]===undefined) return;
+    const py=P.Y(best[k]);
+    cx.fillStyle=getComputedStyle(document.body).getPropertyValue(c).trim();
+    cx.beginPath(); cx.arc(x,py,3.5,0,7); cx.fill();
+    cx.strokeStyle='#fff'; cx.lineWidth=1.5; cx.stroke();
+  });
+
+  const out = (val,k) => { if(val===null||val===undefined) return false; const c=limOf(LIMITS,k); return val<c.lo||val>c.hi; };
+  tip.innerHTML = '<b>'+fmtDate(key)+' '+hhmm(best.m)+'</b>'+
+    (SHOW.t1&&best.a!==null?'<br>'+CHL.a+' '+t1(best.a)+' °C'+(out(best.a,'a')?' ⚠':''):'')+
+    (SHOW.t2&&best.b!==null?'<br>'+CHL.b+' '+t1(best.b)+' °C'+(out(best.b,'b')?' ⚠':''):'')+
+    (SHOW.t3&&best.e!==null&&best.e!==undefined?'<br>'+CHL.e+' '+t1(best.e)+' °C':'')+
+    (best.rt?'<br>'+codeInfo(best.rt).d:'')+
+    (best.d?'<br>Door open':'')+(best.c?'<br>Compressor on':'')+(best.p?'<br>Power lost':'');
+  tip.style.opacity=1;
+  const tw=tip.offsetWidth||140;
+  tip.style.left = Math.min(Math.max(x+14, 4), P.W-tw-4)+'px';
+  tip.style.top  = Math.max(P.pad.t, y-16)+'px';
+}
+
+/* ---------- pointer: drag to zoom, hover to read ---------- */
+function localX(clientX){ return clientX-cv.getBoundingClientRect().left; }
+function xToMin(px){
+  const P=PLOT; return P.vA + ((px-P.pad.l)/P.pw)*P.vSpan;
+}
+cv.addEventListener('mousedown', e=>{
+  if(!PLOT) return;
+  const x=localX(e.clientX);
+  if(x<PLOT.pad.l||x>PLOT.W-PLOT.pad.r) return;
+  DRAG={x0:x,x1:x}; $('#tip').style.opacity=0;
+  e.preventDefault();
+});
+window.addEventListener('mousemove', e=>{
+  if(!DRAG) return;
+  const P=PLOT;
+  DRAG.x1=Math.min(Math.max(localX(e.clientX),P.pad.l),P.W-P.pad.r);
+  drawChart();
+});
+window.addEventListener('mouseup', e=>{
+  if(!DRAG) return;
+  const d=DRAG; DRAG=null;
+  if(Math.abs(d.x1-d.x0)>8){
+    const a=xToMin(Math.min(d.x0,d.x1)), b=xToMin(Math.max(d.x0,d.x1));
+    ZOOM={a,b}; clampZoom(); updateZoomUi();
+  }
+  drawChart();
+});
+cv.addEventListener('mousemove', e=>{ if(!DRAG) readout(e.clientX,e.clientY); });
+cv.addEventListener('mouseleave', ()=>{ if(!DRAG){ $('#tip').style.opacity=0; drawChart(); } });
+cv.addEventListener('dblclick', ()=>resetZoom());
+
+cv.addEventListener('wheel', e=>{
+  if(!PLOT) return;
+  e.preventDefault();
+  zoomBy(e.deltaY>0?1.25:0.8, xToMin(localX(e.clientX)));
+},{passive:false});
+
+/* ---------- touch: one finger reads, two fingers zoom ---------- */
+cv.addEventListener('touchstart', e=>{
+  if(e.touches.length===2 && PLOT){
+    const a=xToMin(localX(e.touches[0].clientX)), b=xToMin(localX(e.touches[1].clientX));
+    PINCH={m0:Math.min(a,b), m1:Math.max(a,b), a:PLOT.vA, b:PLOT.vB};
+    $('#tip').style.opacity=0;
+  }else if(e.touches[0]) readout(e.touches[0].clientX,e.touches[0].clientY);
+},{passive:true});
+cv.addEventListener('touchmove', e=>{
+  if(e.touches.length===2 && PINCH && PLOT){
+    e.preventDefault();
+    const P=PLOT;
+    const x0=localX(e.touches[0].clientX), x1=localX(e.touches[1].clientX);
+    const pxA=Math.min(x0,x1), pxB=Math.max(x0,x1);
+    if(pxB-pxA<12) return;
+    /* keep the two pinched data points under the two fingers */
+    const scale=(PINCH.m1-PINCH.m0)/((pxB-pxA)/P.pw);
+    const a=PINCH.m0-((pxA-P.pad.l)/P.pw)*scale;
+    ZOOM={a, b:a+scale}; clampZoom(); updateZoomUi(); drawChart();
+  }else if(e.touches.length===1 && !PINCH && e.touches[0]){
+    readout(e.touches[0].clientX,e.touches[0].clientY);
+  }
+},{passive:false});
+cv.addEventListener('touchend', e=>{
+  if(e.touches.length<2) PINCH=null;
+  if(e.touches.length===0) setTimeout(()=>{ $('#tip').style.opacity=0; drawChart(); },1800);
+});
+
+let rzT;
+window.addEventListener('resize', ()=>{ clearTimeout(rzT); rzT=setTimeout(()=>{drawChart();},120); });
+
+/* zoom controls */
+$('#btnIn').onclick    = ()=>zoomBy(0.6);
+$('#btnOut').onclick   = ()=>zoomBy(1/0.6);
+$('#btnPanL').onclick  = ()=>panBy(-0.4);
+$('#btnPanR').onclick  = ()=>panBy(0.4);
+$('#btnReset').onclick = ()=>resetZoom();
+
+/* ============================================================
+   5. CALENDAR
+   ============================================================ */
+
+let CAL = {ym:null};
+
+function monthsWithData(){
+  const set=[...new Set([...DAYS.keys()].map(k=>k.slice(0,7)))].sort();
+  return set;
+}
+const MONTH_NAMES=['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function buildCalendar(){
+  const months=monthsWithData();
+  if(!months.length) return;
+  if(!CAL.ym || !months.includes(CAL.ym)) CAL.ym = months[months.length-1];
+
+  const ix=months.indexOf(CAL.ym);
+  const [y,mo]=CAL.ym.split('-').map(Number);
+  const inMonth=[...DAYS.keys()].filter(k=>k.startsWith(CAL.ym)).length;
+
+  const opts=months.map(m=>{
+    const [yy,mm]=m.split('-').map(Number);
+    const n=[...DAYS.keys()].filter(k=>k.startsWith(m)).length;
+    return '<option value="'+m+'"'+(m===CAL.ym?' selected':'')+'>'+MONTH_NAMES[mm-1]+' '+yy+' · '+n+' day'+(n===1?'':'s')+'</option>';
+  }).join('');
+
+  let html='<div class="mo-nav">'+
+    '<button id="moPrev" '+(ix===0?'disabled':'')+' aria-label="Previous month">‹</button>'+
+    '<select id="moSel" aria-label="Month">'+opts+'</select>'+
+    '<button id="moNext" '+(ix===months.length-1?'disabled':'')+' aria-label="Next month">›</button>'+
+    '</div>';
+
+  const first=new Date(y,mo-1,1);
+  const lead=(first.getDay()+6)%7;
+  const nDays=new Date(y,mo,0).getDate();
+  html+='<div class="dow"><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div><div>S</div></div><div class="grid">';
+  for(let i=0;i<lead;i++) html+='<div class="day"></div>';
+  for(let d=1;d<=nDays;d++){
+    const key=y+'-'+pad(mo)+'-'+pad(d);
+    html+= DAYS.has(key)
+      ? '<div class="day has" data-d="'+key+'">'+d+'<div class="bar"></div></div>'
+      : '<div class="day">'+d+'</div>';
+  }
+  html+='</div>';
+  html+='<div class="mo-foot"><span>'+inMonth+' day'+(inMonth===1?'':'s')+' in this month</span>'+
+        '<button id="moAll" class="lnk">Select whole month</button></div>';
+
+  $('#cal').innerHTML=html;
+  $('#dayCount').textContent = DAYS.size+' loaded';
+
+  $$('#cal .day.has').forEach(el=>el.onclick=()=>onDayTap(el.dataset.d));
+  $('#moPrev').onclick=()=>{ CAL.ym=months[Math.max(0,ix-1)]; buildCalendar(); markCalendar(); };
+  $('#moNext').onclick=()=>{ CAL.ym=months[Math.min(months.length-1,ix+1)]; buildCalendar(); markCalendar(); };
+  $('#moSel').onchange=e=>{ CAL.ym=e.target.value; buildCalendar(); markCalendar(); };
+  $('#moAll').onclick=()=>{
+    const m=[...DAYS.keys()].filter(k=>k.startsWith(CAL.ym)).sort();
+    SEL.from=m[0]; SEL.to=m[m.length-1]; SEL.mode='range'; SEL.anchor=null;
+    $$('#modeSeg button').forEach(x=>x.classList.toggle('on', x.dataset.mode==='range'));
+    render();
+  };
+}
+
+function onDayTap(key){
+  if(SEL.mode==='day'){ SEL.from=SEL.to=key; SEL.anchor=null; }
+  else{
+    if(!SEL.anchor){ SEL.anchor=key; SEL.from=SEL.to=key; }
+    else{
+      SEL.from = SEL.anchor<key?SEL.anchor:key;
+      SEL.to   = SEL.anchor<key?key:SEL.anchor;
+      SEL.anchor=null;
+    }
+  }
+  render();
+  if(SEL.mode==='day' || !SEL.anchor) closePanel();   /* range needs both taps first */
+}
+function selectDay(key){
+  SEL.mode='day'; SEL.from=SEL.to=key; SEL.anchor=null;
+  $$('#modeSeg button').forEach(b=>b.classList.toggle('on', b.dataset.mode==='day'));
+  CAL.ym=key.slice(0,7);
+  render();
+  closePanel();
+  document.querySelector('#sumCard').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function markCalendar(){
+  $$('#cal .day.has').forEach(el=>{
+    const k=el.dataset.d, d=DAYS.get(k);
+    const s=dayStats(d,LIMITS);
+    el.classList.remove('sel','inr','s-warn','s-bad','fault');
+    const fl=dayFaults(d,LIMITS).filter(e=>e.kind==='cool');
+    if(fl.length) el.classList.add('fault');
+    const bad = s.bad;
+    const LS = limSpan(LIMITS);
+    const near = !bad && (s.min < LS.lo+0.5 || s.max > LS.hi-0.5);
+    if(bad) el.classList.add('s-bad'); else if(near) el.classList.add('s-warn');
+    if(VIEW){
+      if(k===VIEW.from||k===VIEW.to) el.classList.add('sel');
+      else if(k>VIEW.from && k<VIEW.to) el.classList.add('inr');
+    }
+    el.title = fmtDate(k)+' · '+t1(s.min)+' to '+t1(s.max)+' °C'+
+               (fl.length? ' · possible cooling fault':'');
+  });
+}
+
+/* ============================================================
+   6. EXPORTS
+   ============================================================ */
+
+function savePng(){
+  const tmp=document.createElement('canvas');
+  tmp.width=cv.width; tmp.height=cv.height;
+  const t=tmp.getContext('2d');
+  t.fillStyle='#fff'; t.fillRect(0,0,tmp.width,tmp.height);
+  t.drawImage(cv,0,0);
+  const name=fileStem()+'_chart.png';
+  // toBlob rather than a data: URL — a blob can go to the iOS share sheet,
+  // so the chart can be filed anywhere instead of landing in Downloads.
+  if(window.LabCalSave && tmp.toBlob){
+    tmp.toBlob(blob=>{
+      if(!blob){ toast('Could not build the image'); return; }
+      LabCalSave.deliver(blob,name).then(how=>toast(how==='bar'?'Chart ready — choose Save / Share below':'Chart saved'));
+    },'image/png');
+    return;
+  }
+  const link=document.createElement('a');
+  link.download = name;
+  link.href = tmp.toDataURL('image/png');
+  link.click();
+  toast('Chart saved');
+}
+function exportCsv(){
+  const v=VIEW; if(!v) return;
+  const q = s => '"'+String(s).replace(/"/g,'""')+'"';
+  const L=[];
+  L.push(['Labcold temperature record'].map(q).join(','));
+  L.push(['Customer',META.title||META.customer,'Job',META.job].map(q).join(','));
+  L.push(['Controller PN',META.pn,'Unit type',META.unit,'Firmware',META.fw].map(q).join(','));
+  L.push(['Set point',META.setpoint===null?'':META.setpoint,'Low limit',LIMITS.lo,'High limit',LIMITS.hi]
+         .concat(LIMITS.dual?['Load low limit',LIMITS.loadLo,'Load high limit',LIMITS.loadHi]:[]).map(q).join(','));
+  L.push(['Period',fmtDate(v.from)+' to '+fmtDate(v.to),'Readings',v.totMin].map(q).join(','));
+  L.push('');
+  L.push(['Date','Min C','Max C','Mean C','MKT C','In range %','Minutes out','Door openings','Compressor %','Result'].map(q).join(','));
+  v.per.forEach(p=>{
+    const s=p.s, bad=s.bad;
+    L.push([fmtDate(p.date),t1(s.min),t1(s.max),t1(s.mean),t1(s.mkt),s.inPct.toFixed(1),s.outMin,s.doors,s.compPct.toFixed(0),bad?'Out of range':'In range'].map(q).join(','));
+  });
+  L.push('');
+  L.push(['Cooling faults and door events'].map(q).join(','));
+  L.push(['Date','Finding','From','To','Duration min','Start C','End C','Change C','Compressor on %'].map(q).join(','));
+  if(!(v.faults||[]).length) L.push(['None','','','','','','','',''].map(q).join(','));
+  (v.faults||[]).forEach(e=>L.push([fmtDate(e.date),e.why,hhmm(e.start),hhmm(e.end),evLen(e),
+    e.kind==='cool'?t1(e.from):'',e.kind==='cool'?t1(e.to):'',e.kind==='cool'?e.rise.toFixed(1):'',
+    e.kind==='cool'?Math.round(e.duty):''].map(q).join(',')));
+  L.push('');
+  L.push(['Excursions'].map(q).join(','));
+  L.push(['Date','Sensor','Type','From','To','Duration min','Peak C'].map(q).join(','));
+  if(!v.exc.length) L.push([ 'None','','','','','','' ].map(q).join(','));
+  v.exc.forEach(e=>L.push([fmtDate(e.date),e.ch,e.side,hhmm(e.start),hhmm(e.end),evLen(e),t1(e.peak)].map(q).join(',')));
+
+  const blob=new Blob(['\ufeff'+L.join('\r\n')],{type:'text/csv;charset=utf-8'});
+  const name=fileStem()+'_summary.csv';
+  if(window.LabCalSave){
+    // On iPad this opens the iOS share sheet so the folder can be chosen.
+    LabCalSave.deliver(blob,name).then(how=>toast(how==='bar'?'Summary ready — choose Save / Share below':'Summary exported'));
+    return;
+  }
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  toast('Summary exported');
+}
+function fileStem(){
+  const v=VIEW;
+  const cust=(META.title||META.customer||'record').replace(/[^A-Za-z0-9]+/g,'_').replace(/^_|_$/g,'');
+  const range = v ? (v.from===v.to ? v.from : v.from+'_'+v.to) : '';
+  return (META.job?META.job+'_':'')+cust+'_'+range;
+}
+
+/* ============================================================
+   7. WIRING
+   ============================================================ */
+
+function afterLoad(){
+  const keys=[...DAYS.keys()].sort();
+  $('#welcome').hidden=true;
+  document.body.classList.add('loaded');
+  ['calCard','limCard','instCard','sumCard','chartCard','excCard','dayCard'].forEach(id=>$('#'+id).hidden=false);
+  ['btnPng','btnCsv','btnPrint'].forEach(id=>$('#'+id).disabled=false);
+  $('#btnClear').hidden=false;
+
+  /* a third probe only exists on some models */
+  /* only the 24 range takes a third probe — never offer it on a 19 range or an IBB */
+  HAS_T3=false;
+  if(META.range==='24')
+    for(const d of DAYS.values()){ if(d.rows.some(r=>r.e!==null&&r.e!==undefined)){ HAS_T3=true; break; } }
+  $('.chip[data-s="t3"]').hidden = !HAS_T3;
+  $('#t3Legend').hidden = !HAS_T3;
+  $('#chan').querySelector('option[value="3"]').hidden = !HAS_T3;
+  $('#chan').querySelector('option[value="all"]').hidden = !HAS_T3;
+  if(!HAS_T3 && (LIMITS.chan==='3'||LIMITS.chan==='all')){ LIMITS.chan='both'; $('#chan').value='both'; }
+  /* a 24-range unit with a third probe should assess all three until told otherwise */
+  if(HAS_T3 && !LIMITS._userChan && LIMITS.chan==='both'){ LIMITS.chan='all'; $('#chan').value='all'; }
+
+  /* the blood bank recorder has no compressor feedback */
+  const anyComp=[...DAYS.values()].some(d=>d.hasComp!==false);
+  const compChip=$('.chip[data-s="comp"]');
+  compChip.disabled=!anyComp;
+  compChip.title = anyComp? '' : 'This recorder does not log the compressor';
+  if(!anyComp){ SHOW.comp=false; compChip.classList.remove('on'); }
+
+  /* not every controller logs the door */
+  const anyDoor=[...DAYS.values()].some(d=>d.hasDoor!==false);
+  const doorChip=$('.chip[data-s="door"]');
+  doorChip.disabled=!anyDoor;
+  doorChip.title = anyDoor? '' : 'This controller does not log door state';
+  if(!anyDoor){ SHOW.door=false; doorChip.classList.remove('on'); }
+
+  /* some models log T2 as N/A — don't leave an empty series switched on */
+  let anyT2=false;
+  for(const d of DAYS.values()){ if(d.rows.some(r=>r.b!==null)){ anyT2=true; break; } }
+  const chipT2=$('.chip[data-s="t2"]');
+  if(!anyT2){
+    SHOW.t2=false; chipT2.classList.remove('on'); chipT2.disabled=true;
+    chipT2.title='This controller does not log a T2 probe';
+    /* with a third probe fitted, 'all' already ignores the empty T2 — leave it alone */
+    if(!HAS_T3 && LIMITS.chan!=='1'){ LIMITS.chan='1'; LIMITS._autoChan=true; $('#chan').value='1'; }
+  }else{
+    chipT2.disabled=false; chipT2.title='';
+    if(LIMITS._autoChan){
+      LIMITS.chan = (HAS_T3 && !LIMITS._userChan) ? 'all' : 'both';
+      LIMITS._autoChan=false; $('#chan').value=LIMITS.chan;
+    }
+  }
+  $('#chan').value = LIMITS.chan;   /* keep the dropdown in step with what is actually assessed */
+  /* ---- blood bank recorder: Air and Load probes, each with its own band ---- */
+  const isIBB = META.range==='IBB';
+  CHL = isIBB ? {a:'Air', b:'Load', e:'T3'} : {a:'T1', b:'T2', e:'T3'};
+  $('#labT1').textContent = isIBB ? 'Air probe' : 'T1 air';
+  $('#labT2').textContent = isIBB ? 'Load probe' : 'T2 load';
+  $('#legT1').textContent = isIBB ? 'Air probe' : 'T1 air sensor';
+  $('#legT2').textContent = isIBB ? 'Load probe (blood bag)' : 'T2 load / bottle sensor';
+  LIMITS.dual = isIBB;
+  $('#fLoadLo').hidden = !isIBB;
+  $('#fLoadHi').hidden = !isIBB;
+  $('#labLo').textContent = isIBB ? 'Air low °C'  : 'Low limit °C';
+  $('#labHi').textContent = isIBB ? 'Air high °C' : 'High limit °C';
+  const cs=$('#chan');
+  cs.querySelector('option[value="both"]').textContent = isIBB ? 'Air and Load' : 'T1 and T2';
+  cs.querySelector('option[value="1"]').textContent    = isIBB ? 'Air only'     : 'T1 only';
+  cs.querySelector('option[value="2"]').textContent    = isIBB ? 'Load only'    : 'T2 only';
+  if(isIBB){
+    /* the HMI event log states what the unit is actually configured to */
+    if(!afterLoad._ibbCfg){
+      const cfg = limitsFromSettings(EVLOG.settings);
+      LIMITS.lo = (cfg.air.lo!==null) ? cfg.air.lo : 2;
+      LIMITS.hi = (cfg.air.hi!==null) ? cfg.air.hi : 8;
+      LIMITS.loadLo = (cfg.load.lo!==null) ? cfg.load.lo : 2;
+      LIMITS.loadHi = (cfg.load.hi!==null) ? cfg.load.hi : 6;
+      META.product = cfg.product || 'Blood Bank Refrigerator';
+      afterLoad._ibbCfg=true; afterLoad._done=true;
+    }
+    if(EVLOG.serial) META.pn = EVLOG.serial;
+    if(EVLOG.fw)     META.fw = EVLOG.fw;
+    $('#lo').value=LIMITS.lo; $('#hi').value=LIMITS.hi;
+    $('#loadLo').value=LIMITS.loadLo; $('#loadHi').value=LIMITS.loadHi;
+  }
+  $('#preset').querySelector('option[value="ibb"]').hidden = !isIBB;
+  $('#preset').value = matchPreset();
+
+  $('#loadHint').innerHTML = DAYS.size+' day'+(DAYS.size===1?'':'s')+' in memory, '+
+    fmtDate(keys[0])+' to '+fmtDate(keys[keys.length-1])+'. Load another folder to add more.';
+
+  /* the 24-range file states its own alarm limits — trust those over a guess */
+  if(!afterLoad._done && META.fileLimits){
+    LIMITS.lo=META.fileLimits.lo; LIMITS.hi=META.fileLimits.hi;
+    $('#lo').value=LIMITS.lo; $('#hi').value=LIMITS.hi;
+    const o=[...$('#preset').options].find(x=>x.value===LIMITS.lo+','+LIMITS.hi);
+    $('#preset').value = o?o.value:'custom';
+    afterLoad._done=true;
+  }
+  /* sensible limits from the set point, first load only */
+  if(!afterLoad._done && META.setpoint!==null){
+    const sp=META.setpoint;
+    let lo,hi;
+    if(sp<=-40){lo=-90;hi=-60;} else if(sp<=-10){lo=-30;hi=-15;}
+    else if(sp>=18&&sp<=26){lo=20;hi=24;}
+    else {lo=2;hi=8;}
+    LIMITS.lo=lo; LIMITS.hi=hi;
+    $('#lo').value=lo; $('#hi').value=hi;
+    const opt=[...$('#preset').options].find(o=>o.value===lo+','+hi);
+    $('#preset').value = opt?opt.value:'custom';
+  }
+  afterLoad._done=true;
+
+  const rangeName = META.range==='24' ? '24 Range' : META.range==='19' ? '19 Range'
+                  : META.range==='IBB' ? 'IBB Blood Bank' : '';
+  const badge=$('#rangeBadge'), tag=$('#rangeTag');
+  if(rangeName){
+    badge.hidden=false; badge.textContent=rangeName;
+    tag.hidden=false;   tag.textContent=rangeName;
+  }else{ badge.hidden=true; tag.hidden=true; }
+
+  renderInstrument();
+
+  buildCalendar();
+  if(!SEL.from){ SEL.from=SEL.to=keys[keys.length-1]; }
+  render();
+}
+
+/* redrawn on every refresh so the stated limits always match what is being assessed */
+function renderInstrument(){
+  const body=$('#instBody');
+  if(!body || !DAYS.size) return;
+  const row=(k,v)=>'<div style="display:flex;gap:10px;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--line-2)">'+
+      '<span style="font-size:11.5px;color:var(--txt-2)">'+k+'</span>'+
+      '<span class="mono" style="font-size:12px;text-align:right;word-break:break-all">'+v+'</span></div>';
+  const rangeName = META.range==='24' ? '24 Range' : META.range==='19' ? '19 Range'
+                  : META.range==='IBB' ? 'IBB Blood Bank' : '';
+  body.innerHTML =
+    row('Customer', META.customer||'—') + row('Job', META.job||'—') +
+    row('Controller', rangeName||'—') +
+    (META.controller? row('Name', META.controller):'') +
+    (META.product? row('Product', META.product):'') +
+    row(META.range==='24'?'Fridge type':'Unit type', META.unit||'—') +
+    row(META.range==='24'||META.range==='IBB'?'Serial number':'Controller PN', META.pn||'—') +
+    (META.fw? row('Firmware', META.fw):'') +
+    (META.range!=='IBB'? row('Set point', META.setpoint===null?'—':t1(META.setpoint)+' °C'):'') +
+    (LIMITS.dual
+      ? row('Air limits', t1(LIMITS.lo)+' to '+t1(LIMITS.hi)+' °C') +
+        row('Load limits', t1(LIMITS.loadLo)+' to '+t1(LIMITS.loadHi)+' °C')
+      : row('Alarm limits', t1(LIMITS.lo)+' to '+t1(LIMITS.hi)+' °C'));
+}
+
+/* file inputs */
+$('#fDir').addEventListener('change', e=>ingest([...e.target.files]));
+$('#fFiles').addEventListener('change', e=>ingest([...e.target.files]));
+
+/* drag & drop, including folders */
+const drop=$('#drop');
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('hot')}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('hot')}));
+drop.addEventListener('drop', async e=>{
+  const items=e.dataTransfer.items;
+  if(items && items.length && items[0].webkitGetAsEntry){
+    const entries=[...items].map(i=>i.webkitGetAsEntry()).filter(Boolean);
+    const files=[];
+    await Promise.all(entries.map(en=>walk(en,files)));
+    ingest(files);
+  }else{
+    ingest([...e.dataTransfer.files]);
+  }
+});
+function walk(entry, out){
+  return new Promise(res=>{
+    if(entry.isFile){ entry.file(f=>{ out.push(f); res(); }, ()=>res()); }
+    else if(entry.isDirectory){
+      const rd=entry.createReader(); const all=[];
+      const read=()=>rd.readEntries(async es=>{
+        if(!es.length){ await Promise.all(all.map(en=>walk(en,out))); res(); return; }
+        all.push(...es); read();
+      }, ()=>res());
+      read();
+    } else res();
+  });
+}
+
+/* selection mode */
+$$('#modeSeg button').forEach(b=>b.onclick=()=>{
+  $$('#modeSeg button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); SEL.mode=b.dataset.mode; SEL.anchor=null;
+  if(SEL.mode==='day'&&SEL.from!==SEL.to){ SEL.to=SEL.from; render(); }
+});
+
+/* quick ranges */
+$$('.quick button').forEach(b=>b.onclick=()=>{
+  const keys=[...DAYS.keys()].sort(); if(!keys.length) return;
+  const last=keys[keys.length-1];
+  const q=b.dataset.q;
+  if(q==='last'){ SEL.from=SEL.to=last; }
+  else if(q==='7'){ const i=Math.max(0,keys.length-7); SEL.from=keys[i]; SEL.to=last; }
+  else if(q==='month'){ const ym=last.slice(0,7); const m=keys.filter(k=>k.startsWith(ym)); SEL.from=m[0]; SEL.to=m[m.length-1]; }
+  else { SEL.from=keys[0]; SEL.to=last; }
+  SEL.mode = SEL.from===SEL.to?'day':'range';
+  $$('#modeSeg button').forEach(x=>x.classList.toggle('on', x.dataset.mode===SEL.mode));
+  SEL.anchor=null; render(); closePanel();
+});
+
+/* limits */
+function readLimits(){
+  const lo=parseFloat($('#lo').value), hi=parseFloat($('#hi').value);
+  if(isFinite(lo)&&isFinite(hi)&&hi>lo){ LIMITS.lo=lo; LIMITS.hi=hi; }
+  if(LIMITS.dual){
+    const llo=parseFloat($('#loadLo').value), lhi=parseFloat($('#loadHi').value);
+    if(isFinite(llo)&&isFinite(lhi)&&lhi>llo){ LIMITS.loadLo=llo; LIMITS.loadHi=lhi; }
+  }
+  const md=parseInt($('#minDur').value,10); LIMITS.minDur=isFinite(md)?Math.max(0,md):1;
+  const ch=$('#chan').value;
+  if(ch!==LIMITS.chan) LIMITS._userChan=true;
+  LIMITS.chan=ch; LIMITS._autoChan=false;
+  $('#preset').value = matchPreset();
+  store.set('limits',LIMITS);
+  if(DAYS.size) render();
+}
+['lo','hi','minDur','chan','loadLo','loadHi'].forEach(id=>{
+  const el=$('#'+id);
+  el.addEventListener('change',readLimits);
+  el.addEventListener('input',()=>{ clearTimeout(readLimits._t); readLimits._t=setTimeout(readLimits,260); });
+});
+$('#preset').addEventListener('change',e=>{
+  if(e.target.value==='custom') return;
+  if(e.target.value==='ibb'){
+    $('#lo').value=2; $('#hi').value=8;
+    $('#loadLo').value=2; $('#loadHi').value=6;
+    readLimits(); return;
+  }
+  const [lo,hi]=e.target.value.split(',').map(Number);
+  $('#lo').value=lo; $('#hi').value=hi; readLimits();
+});
+['lo','hi'].forEach(id=>$('#'+id).addEventListener('change',()=>{
+  $('#preset').value = matchPreset();
+}));
+
+/* which preset, if any, describes the bands currently in force */
+function matchPreset(){
+  if(LIMITS.dual){
+    return (LIMITS.lo===2&&LIMITS.hi===8&&LIMITS.loadLo===2&&LIMITS.loadHi===6) ? 'ibb' : 'custom';
+  }
+  const o=[...$('#preset').options].find(x=>x.value===LIMITS.lo+','+LIMITS.hi);
+  return o?o.value:'custom';
+}
+
+/* series toggles */
+$$('.chart-top .chip').forEach(b=>b.onclick=()=>{
+  const k=b.dataset.s; SHOW[k]=!SHOW[k];
+  b.classList.toggle('on',SHOW[k]); store.set('show',SHOW); drawChart();
+});
+
+/* clear everything and start on the next customer */
+$('#btnClear').onclick = ()=>{
+  if(!confirm('Clear all '+DAYS.size+' loaded days and start a new customer?\n\nNothing is saved — you would need to load the folder again.')) return;
+  DAYS.clear();
+  META = {job:'', customer:'', unit:'', fw:'', pn:'', setpoint:null, title:'',
+          range:'', controller:'', fileLimits:null, product:''};
+  EVLOG = {events:[], settings:[], serial:'', fw:''};
+  CHL  = {a:'T1', b:'T2', e:'T3'};
+  LIMITS.dual=false; $('#fLoadLo').hidden=true; $('#fLoadHi').hidden=true;
+  $('#preset').querySelector('option[value="ibb"]').hidden=true;
+  $('#chan').querySelector('option[value="both"]').textContent='T1 and T2';
+  $('#chan').querySelector('option[value="1"]').textContent='T1 only';
+  $('#chan').querySelector('option[value="2"]').textContent='T2 only';
+  $('#labLo').textContent='Low limit °C'; $('#labHi').textContent='High limit °C';
+  $('#labT1').textContent='T1 air'; $('#labT2').textContent='T2 load';
+  $('#legT1').textContent='T1 air sensor'; $('#legT2').textContent='T2 load / bottle sensor';
+  SEL  = {mode:'day', from:null, to:null, anchor:null};
+  CAL  = {ym:null};
+  VIEW = null; ZOOM = null; PLOT = null;
+  render._range = null; afterLoad._done = false; afterLoad._ibbCfg = false;
+  document.body.classList.remove('loaded');
+  $('#welcome').hidden = false;
+  ['calCard','limCard','instCard','sumCard','chartCard','excCard','dayCard','alertCard','faultCard']
+    .concat(['mixedCard','rtCard','pwrCard'])
+    .forEach(id=>$('#'+id).hidden = true);
+  ['btnPng','btnCsv','btnPrint'].forEach(id=>$('#'+id).disabled = true);
+  $('#btnClear').hidden = true;
+  $('#fDir').value=''; $('#fFiles').value='';
+  $('#cal').innerHTML=''; $('#dayCount').textContent='';
+  $('#jobName').textContent='—';
+  $('#rangeBadge').hidden=true; $('#rangeTag').hidden=true;
+  $('.chip[data-s="t3"]').hidden=true; $('#t3Legend').hidden=true;
+  $('#chan').querySelector('option[value="3"]').hidden=true;
+  $('#chan').querySelector('option[value="all"]').hidden=true;
+  if(LIMITS.chan==='all'||LIMITS.chan==='3'){ LIMITS.chan='both'; $('#chan').value='both'; }
+  HAS_T3=false;
+  $$('.chart-top .chip').forEach(b=>{ b.disabled=false; b.title=''; });
+  $('.chip[data-s="comp"]').classList.remove('on'); SHOW.comp=false;
+  SHOW.t2 = true; $('.chip[data-s="t2"]').classList.add('on');
+  if(LIMITS._autoChan){ LIMITS.chan='both'; LIMITS._autoChan=false; $('#chan').value='both'; }
+  $('#loadHint').innerHTML='Reads Labcold controller logs (<span class="mono">YYMMDD.CSV</span>) from the monthly folders. Everything stays on this device — nothing is uploaded.';
+  window.scrollTo({top:0,behavior:'smooth'});
+  toast('Cleared — ready for the next customer');
+};
+
+/* editable report title — folder names carry typos */
+const jobEl=$('#jobName');
+jobEl.addEventListener('input',()=>{
+  META.title = jobEl.textContent.trim();
+  $('#phTitle').textContent = META.title || 'Temperature record';
+});
+jobEl.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); jobEl.blur(); } });
+jobEl.addEventListener('paste',e=>{
+  e.preventDefault();
+  document.execCommand('insertText', false, (e.clipboardData||window.clipboardData).getData('text'));
+});
+
+/* ---------- slide-over controls panel (tablet and phone) ---------- */
+/* matchMedia and its addEventListener are missing on older WebKit, so fall back */
+const panelQ = window.matchMedia ? window.matchMedia('(max-width:1100px)') : null;
+function narrowScreen(){ return panelQ ? panelQ.matches : window.innerWidth<=1100; }
+function panelMode(){ return narrowScreen() && document.body.classList.contains('loaded'); }
+function openPanel(){ if(panelMode()) document.body.classList.add('panel'); }
+function closePanel(){ document.body.classList.remove('panel'); }
+function togglePanel(){ document.body.classList.contains('panel') ? closePanel() : openPanel(); }
+$('#btnPanel').onclick = togglePanel;
+$('#btnPanelClose').onclick = closePanel;
+$('#scrim').onclick = closePanel;
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closePanel(); });
+const onWide = ()=>{ if(!narrowScreen()) closePanel(); };
+if(panelQ && panelQ.addEventListener) panelQ.addEventListener('change', onWide);
+else if(panelQ && panelQ.addListener) panelQ.addListener(onWide);
+else window.addEventListener('resize', onWide);
+
+/* ---------- step through the loaded days without opening the panel ---------- */
+function updateDayNav(){
+  const nav=$('#dayNav'); if(!nav) return;
+  const keys=[...DAYS.keys()].sort();
+  const single = !!VIEW && VIEW.from===VIEW.to;
+  nav.hidden = keys.length<2;
+  const i = single ? keys.indexOf(VIEW.from) : -1;
+  $('#dPrev').disabled = !single || i<=0;
+  $('#dNext').disabled = !single || i<0 || i>=keys.length-1;
+  $('#dPrev').title = (!single) ? 'Switch to a single day to step' : 'Previous day';
+  $('#dNext').title = (!single) ? 'Switch to a single day to step' : 'Next day';
+}
+function stepDay(step){
+  if(!VIEW || VIEW.from!==VIEW.to) return;
+  const keys=[...DAYS.keys()].sort();
+  const i=keys.indexOf(VIEW.from)+step;
+  if(i<0 || i>=keys.length) return;
+  SEL.mode='day'; SEL.from=SEL.to=keys[i]; SEL.anchor=null;
+  $$('#modeSeg button').forEach(b=>b.classList.toggle('on', b.dataset.mode==='day'));
+  render();
+}
+$('#dPrev').onclick=()=>stepDay(-1);
+$('#dNext').onclick=()=>stepDay(1);
+document.addEventListener('keydown', e=>{
+  if(e.key!=='ArrowLeft' && e.key!=='ArrowRight') return;
+  const a=document.activeElement;
+  if(a && (a.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName))) return;
+  if(!DAYS.size) return;
+  e.preventDefault();
+  stepDay(e.key==='ArrowLeft' ? -1 : 1);
+});
+
+/* toolbar */
+$('#btnPng').onclick=savePng;
+$('#btnCsv').onclick=exportCsv;
+$('#btnPrint').onclick=()=>window.print();
+
+/* restore preferences */
+(function init(){
+  const L=store.get('limits',null);
+  if(L){ Object.assign(LIMITS,L); LIMITS.dual=false;
+         $('#lo').value=LIMITS.lo; $('#hi').value=LIMITS.hi;
+         $('#loadLo').value=LIMITS.loadLo; $('#loadHi').value=LIMITS.loadHi;
+         $('#minDur').value=LIMITS.minDur; $('#chan').value=LIMITS.chan;
+         const opt=[...$('#preset').options].find(o=>o.value===LIMITS.lo+','+LIMITS.hi);
+         $('#preset').value=opt?opt.value:'custom'; }
+  const S=store.get('show',null);
+  if(S){ Object.assign(SHOW,S);
+         $$('.chart-top .chip').forEach(b=>b.classList.toggle('on',!!SHOW[b.dataset.s])); }
+})();
+
+// v1.565: ← Back / Home in the top bar — installed on the Home Screen the
+// viewer had no way back. Nothing here is calibration data (the log files
+// can simply be loaded again), so leaving never asks.
+if(window.LabCalNav) LabCalNav.init({ bar:'.topbar', buttonClass:'tb-btn', noWarn:true });
+</script>
+</body>
+</html>
