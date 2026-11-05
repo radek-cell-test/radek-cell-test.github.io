@@ -1,0 +1,157 @@
+/* LabCal v1.611 — Labcold blue + "liquid glass" look (same as LabCal Office).
+   ---------------------------------------------------------------------------
+   Loaded LAST by the home page and the section pages (index, calibration,
+   tools, monitoring_systems), so it only re-colours what those pages already
+   draw. It does not change any markup, any logic, or anything on the
+   worksheets / certificates — worksheet pages use labcal_glass_ws.css, which
+   touches only the toolbar above the sheet.
+
+   Glass = translucent white + blur on the header, panels, cards and menus.
+   Text, numbers, inputs and lists stay on an almost solid surface so they are
+   easy to read in a bright hospital corridor. Without blur support, or with
+   "Reduce transparency" switched on in iPad settings, everything falls back to
+   plain solid colours (bottom of this file). */
+
+:root{
+  --bg:#EAF2F8;
+  --bg2:#F1F7FB;
+  --panel:rgba(255,255,255,.80);
+  --panel-hi:rgba(232,244,251,.92);
+  --border:rgba(16,41,58,.14);
+  --border-soft:rgba(16,41,58,.09);
+  --ink:#10293A;
+  --muted:#4F6576;
+  --muted-dim:#7F93A3;
+  --cyan:#0081C8;          /* Labcold blue — was teal #0f9488 */
+  --cyan-dim:#5BB4E5;
+  --lcg-brand-2:#00A3E0;
+  --lcg-brand-ink:#006BA6;
+  --lcg-glass:rgba(255,255,255,.62);
+  --lcg-glass-strong:rgba(255,255,255,.88);
+  --lcg-glass-line:rgba(255,255,255,.75);
+  --lcg-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 0 0 1px rgba(16,41,58,.06),0 8px 28px rgba(0,60,110,.10);
+  --lcg-blur:blur(22px) saturate(180%);
+}
+
+html{background:var(--bg)}
+body{
+  color:var(--ink);
+  background:
+    radial-gradient(1100px 600px at 8% -10%, rgba(0,163,224,.22), transparent 60%),
+    radial-gradient(900px 600px at 105% 10%, rgba(0,129,200,.18), transparent 60%),
+    radial-gradient(800px 500px at 50% 110%, rgba(0,163,224,.12), transparent 60%),
+    linear-gradient(180deg,#F3F8FC 0%,#E7F0F7 100%);
+  background-attachment:fixed;
+}
+/* the faint calibration grid is replaced by the soft blue gradient */
+.gridlines{display:none}
+
+/* ---- header: blue glass bar with the Labcold logo ---- */
+.wrap{padding-top:14px}
+header{
+  margin:0 0 4px;padding:12px 20px;border:1px solid rgba(255,255,255,.35);border-radius:20px;
+  color:#fff;border-bottom:1px solid rgba(255,255,255,.35);
+  background:linear-gradient(180deg,rgba(0,129,200,.92),rgba(0,112,178,.88));
+  -webkit-backdrop-filter:var(--lcg-blur);backdrop-filter:var(--lcg-blur);
+  box-shadow:0 1px 0 rgba(255,255,255,.28) inset,0 8px 26px rgba(0,70,120,.22);
+}
+.brandcol{flex-direction:row;align-items:center;gap:14px;flex-wrap:wrap}
+.lc-logo{height:30px;width:auto;display:block}
+.wordmark{align-items:center;padding-left:14px;border-left:1px solid rgba(255,255,255,.45)}
+.wordmark .mark{font-family:var(--sans);font-weight:650;font-size:19px;letter-spacing:.2px;color:#fff}
+.wordmark .tag{font-family:var(--sans);font-size:10px;letter-spacing:1px;font-weight:600;color:#fff;
+  background:rgba(255,255,255,.20);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:3px 9px}
+.hstat{color:rgba(255,255,255,.85)}
+.hstat b{color:#fff}
+.hstat .dot{background:#7CE0A6;box-shadow:0 0 0 3px rgba(124,224,166,.25)}
+.fsbtn{border-color:rgba(255,255,255,.45);color:#fff;background:rgba(255,255,255,.12);border-radius:999px;width:36px;height:36px}
+.fsbtn:hover{border-color:#fff;color:#fff;background:rgba(255,255,255,.22)}
+.fsbtn:active{background:rgba(255,255,255,.30)}
+@media (max-width:480px){
+  header{padding:10px 14px}
+  .lc-logo{height:24px}
+  .wordmark .mark{font-size:16px}
+  .wordmark .tag{display:none}
+}
+
+/* ---- headings ---- */
+h1{color:#0E3550}
+.eyebrow{color:var(--lcg-brand-ink)}
+.section-label{color:#5E7688}
+.backlink{color:var(--lcg-brand-ink)}
+
+/* ---- glass panels ---- */
+.card,.offlinebox,.slot,.backup,.pdfq,.homehint,.updatebanner,.contjob,.contnext,
+.offsets,.certs,.job{
+  background:var(--panel);border-color:var(--lcg-glass-line);border-radius:18px;
+  box-shadow:var(--lcg-shadow);
+  -webkit-backdrop-filter:var(--lcg-blur);backdrop-filter:var(--lcg-blur);
+}
+/* keep the coloured / dashed states those panels already have */
+.card.planned,.card.addnew,.slot.lvl-none,.certs.empty,.job.empty{border-color:rgba(0,129,200,.30);background:rgba(255,255,255,.45);box-shadow:none}
+.slot.lvl-ok{border-color:rgba(0,129,200,.35)}
+.slot.lvl-soon{border-color:var(--amber-dim)}
+.slot.lvl-critical,.slot.lvl-expired{border-color:#e0a49c;background:rgba(255,250,249,.92)}
+.backup.warn{border-color:var(--amber-dim);background:rgba(255,253,247,.92)}
+.backup.stale{border-color:#e0a49c;background:rgba(255,250,249,.92)}
+.homehint{border-left:5px solid var(--cyan)}
+.homehint.restore{border-color:#e7c98f;border-left-color:#d08a1a;background:rgba(255,253,247,.92)}
+.contjob,.contnext{border-color:rgba(0,129,200,.45);border-left:5px solid var(--cyan)}
+.contjob.cj-joined{border-bottom-left-radius:0;border-bottom-right-radius:0;border-bottom:0}
+.contnext{border-top:0;border-radius:0 0 18px 18px}
+.contnext .cn-unit{background:rgba(0,129,200,.06);border-radius:14px}
+.updatebanner{border-color:rgba(0,129,200,.45);background:var(--panel-hi)}
+.card.active:hover{border-color:rgba(0,129,200,.35);background:rgba(255,255,255,.92);
+  box-shadow:0 1px 0 #fff inset,0 0 0 1px rgba(16,41,58,.06),0 14px 34px rgba(0,60,110,.16)}
+.card.locked{background:rgba(255,255,255,.55)}
+
+/* status chips at the top of the home page */
+.schip{background:var(--lcg-glass-strong);border-color:rgba(16,41,58,.12);
+  box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 1px 3px rgba(0,50,90,.08)}
+.schip.ok{border-color:#b9e2c9}
+.schip.warn{border-color:var(--amber);background:#fdf3e3}
+.schip.bad{border-color:#c0392b;background:#fdecea}
+
+/* ---- buttons: Labcold blue, rounded, slight gloss ---- */
+.dlbtn,.sbtn,.jbtn,.cbtn,.setbtn,.backbtn,.calbar .arrow,.contjob .cj-go,.contnext .cn-go,.contnext .cn-pill{border-radius:999px}
+.dlbtn,.sbtn:not(.ghost),.jbtn:not(.ghost):not(.cross),.cbtn.solid,.contjob .cj-go,.contnext .cn-go{
+  background-image:linear-gradient(180deg,rgba(255,255,255,.20),rgba(255,255,255,0));
+  box-shadow:0 1px 0 rgba(255,255,255,.40) inset,0 4px 14px rgba(0,129,200,.26);
+}
+.dlbtn:hover,.sbtn:not(.ghost):hover,.jbtn:not(.ghost):not(.cross):hover,.cbtn.solid:hover{background-color:var(--lcg-brand-ink)}
+.offlinebox.ready .dlbtn{box-shadow:0 1px 0 rgba(255,255,255,.40) inset,0 4px 14px rgba(31,157,85,.26)}
+.offlinebox.ready .dlbtn:hover{background-color:#187f43}
+.cbtn,.sbtn.ghost,.jbtn.ghost,.setbtn,.backbtn,.calbar .arrow{
+  background-color:var(--lcg-glass-strong);
+  box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 1px 3px rgba(0,50,90,.08);
+}
+.cbtn.solid{background-color:var(--cyan)}
+.cbtn:disabled,.jbtn:disabled{box-shadow:none}
+
+/* ---- inputs stay solid white, just softer corners ---- */
+.pdfq select,.daysel,.jobtools input.search,.jobbar select{border-radius:12px;background:#fff}
+
+/* ---- calendar strip on the calibration page ---- */
+.cell{background:rgba(255,255,255,.80);border-radius:10px}
+.cell.sel{background:var(--cyan);background-image:linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,0))}
+
+/* ---- menus ---- */
+.jmore{background:var(--lcg-glass-strong);border-color:var(--lcg-glass-line);border-radius:16px;
+  -webkit-backdrop-filter:var(--lcg-blur);backdrop-filter:var(--lcg-blur);
+  box-shadow:0 1px 0 #fff inset,0 18px 44px rgba(0,40,80,.25)}
+#jobMoreBtn[aria-expanded="true"]{background:var(--lcg-brand-ink)}
+
+footer{border-top-color:rgba(16,41,58,.10)}
+:focus-visible{outline-color:rgba(0,163,224,.55)}
+
+/* ---- no blur support, or "Reduce transparency" switched on → solid ---- */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  header{background:#0081C8}
+  .card,.offlinebox,.slot,.backup,.pdfq,.homehint,.updatebanner,.contjob,.contnext,
+  .offsets,.certs,.job,.jmore{background:#fff}
+}
+@media (prefers-reduced-transparency:reduce){
+  header{background:#0081C8;-webkit-backdrop-filter:none;backdrop-filter:none}
+  .card,.offlinebox,.slot,.backup,.pdfq,.homehint,.updatebanner,.contjob,.contnext,
+  .offsets,.certs,.job,.jmore{background:#fff;-webkit-backdrop-filter:none;backdrop-filter:none}
+}
