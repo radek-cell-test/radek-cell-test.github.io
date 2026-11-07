@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta name="labcal-build" content="v1.623">
+<script src="labcal_build.js"></script>
+<script src="labcal_errlog.js"></script>
+<script src="labcal_shell.js"></script>  <!-- v1.619: side menu -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="LabCal">
+<meta name="theme-color" content="#EAF2F8">
+<title>LabCal — Live probes</title>
+<script src="labcal_testmode.js"></script>
+<script src="labcal_units.js"></script>
+<script src="labcal_jobsheet.js"></script>
+<script src="labcal_schedule.js"></script>
+<!--
+  LabCal v1.622 — Live probes (UI redesign stage 3, mockup 02).
+  One timeline of every unit with times entered today on this iPad, in any
+  tab, any job. READ ONLY: everything comes from the worksheets' own
+  autosaves through LabCalSchedule.live() — this page never writes a time,
+  a reading or a certificate, and judges nothing (the worksheet's timing
+  checks stay the authority). It redraws when another tab saves (storage
+  event) and every 20 s. No alarms (Radek, 7 Nov 2026): an iPad does not let
+  a web app wake itself in the background.
+  v1.623 (Radek): thermometers & probes in use / booked / free (from the
+  offsets files + the worksheets), the thermometer and probes of each unit,
+  units not started yet today, and "set the next time" — a tap on a unit's
+  timeline (or its blue button) opens the worksheet with its own touch time
+  picker ready on that time (sessionStorage note read by labcal_timing.js).
+  This page STILL writes no time: nothing is saved until OK on the worksheet.
+  A unit whose worksheet is not decided yet (medical / non-medical decides
+  the thermometer) cannot be started from here.
+-->
+<style>
+:root{--ink:#10293A;--muted:#5B6B79;--line:#E5E9EF;--blue:#0081C8;--stab:#D97706;--cycle:#0081C8;--adjust:#7C3AED;--cert:#1F9D55;--now:#D92D20;
+  --sans:-apple-system,"SF Pro Text","Inter","Segoe UI",Helvetica,Arial,sans-serif;--mono:ui-monospace,"SF Mono",Consolas,monospace}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:#F4F6F9;color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;min-height:100vh;min-height:100dvh;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.wrap{max-width:1500px;margin:0 auto;padding:30px 28px 60px}
+@media (max-width:620px){.wrap{padding:0 14px 50px}}
+.lp-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.lp-head h1{margin:0;font-size:34px;font-weight:800;letter-spacing:-.6px}
+.lp-head p{margin:4px 0 0;color:var(--muted);font-size:15px}
+.lp-clock{font-family:var(--mono);font-size:13px;color:var(--muted)}
+
+.lp-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.lp-tile{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px 16px;min-width:0}
+.lp-tile span{display:block;font-size:13.5px;color:var(--muted)}
+.lp-tile b{display:block;font-size:30px;font-weight:800;letter-spacing:-.5px;margin-top:2px;line-height:1.1}
+.lp-tile small{display:block;font-size:12.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lp-tile.t-run b{color:var(--stab)} .lp-tile.t-ready b{color:var(--cert)} .lp-tile.t-next b{color:var(--blue)}
+@media (max-width:760px){.lp-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.lp-card{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.lp-grid{--info:340px;position:relative}
+.lp-axis,.lp-row{display:grid;grid-template-columns:var(--info) minmax(0,1fr)}
+.lp-axis{border-bottom:1px solid var(--line);height:46px;align-items:center}
+.lp-axis .lp-ul{padding-left:18px;font-size:14px;color:var(--muted)}
+.lp-track{position:relative;height:100%;margin-right:18px}
+.lp-tick{position:absolute;top:0;bottom:0;border-left:1px dashed #EDF0F4}
+.lp-axis .lp-tick{border:0}
+.lp-axis .lp-tick span{position:absolute;top:14px;transform:translateX(-50%);font-size:12.5px;color:#7A8A97;white-space:nowrap}
+.lp-nowtag{position:absolute;top:11px;transform:translateX(-50%);background:var(--now);color:#fff;font-size:12px;font-weight:700;
+  padding:3px 7px;border-radius:7px;z-index:3;white-space:nowrap}
+.lp-row{border-bottom:1px solid #EEF1F4;min-height:88px}
+.lp-row:last-child{border-bottom:0}
+.lp-info{display:flex;gap:12px;align-items:flex-start;padding:14px 10px 12px 18px;min-width:0}
+.lp-ico{flex:none;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#F1F3F6;color:#8A99A6;margin-top:2px}
+.lp-ico svg{width:18px;height:18px}
+.lp-row.k-stab .lp-ico,.lp-row.k-wait .lp-ico{background:#FDF1E3;color:var(--stab)}
+.lp-row.k-cycle .lp-ico{background:#E3F1FA;color:var(--cycle)}
+.lp-row.k-adjust .lp-ico{background:#F1EAFB;color:var(--adjust)}
+.lp-row.k-ready .lp-ico{background:#E6F6EE;color:var(--cert)}
+.lp-txt{min-width:0;flex:1}
+.lp-t1{font-weight:750;font-size:15px;overflow-wrap:anywhere}
+.lp-t1 .lp-sn{font-family:var(--mono);font-weight:500;font-size:13px;color:#7A8A97;margin-left:4px}
+.lp-t2{font-size:13px;color:#33414C;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lp-st{font-size:13.5px;font-weight:700;margin-top:3px}
+.k-plan .lp-st{color:#6B7782} .k-stab .lp-st{color:#B45F06} .k-wait .lp-st{color:#9A3412} .k-cycle .lp-st{color:#006BA6}
+.k-adjust .lp-st{color:var(--adjust)} .k-ready .lp-st{color:#178048} .k-done .lp-st{color:#6B7782}
+.lp-open{display:inline-flex;align-items:center;min-height:36px;margin-top:4px;padding:0 12px;border-radius:10px;border:1px solid #CFE3F1;
+  background:#F2F8FC;color:#006BA6;font-size:13px;font-weight:700;text-decoration:none}
+.lp-open:active{background:#E3F1FA}
+.lp-row.done .lp-info,.lp-row.done .lp-bars{opacity:.55}
+.lp-bars{position:relative;height:100%;min-height:60px}
+.lp-seg{position:absolute;top:50%;height:34px;margin-top:-17px;border-radius:8px;border:0;padding:0 7px;color:#fff;font:700 12.5px/34px var(--sans);
+  text-align:left;white-space:nowrap;overflow:hidden;text-overflow:clip;min-width:6px;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.lp-seg.k-stab{background:var(--stab)} .lp-seg.k-cycle{background:var(--cycle)} .lp-seg.k-adjust{background:var(--adjust)} .lp-seg.k-cert{background:var(--cert);padding:0}
+.lp-seg.planned{background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.28) 0 6px,transparent 6px 12px);opacity:.7}
+.lp-nowline{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--now);z-index:2;pointer-events:none}
+.lp-tap{grid-column:2;font-size:12.5px;color:var(--muted);padding:0 18px 10px 0;min-height:0}
+.lp-tap:empty{display:none}
+.lp-foot{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;border-top:1px solid var(--line);padding:12px 18px;font-size:13.5px;color:#33414C}
+.lp-foot i{display:inline-block;width:13px;height:13px;border-radius:4px;vertical-align:-2px;margin-right:6px}
+.lp-foot .lp-rules{margin-left:auto;color:var(--muted)}
+.lp-empty{padding:40px 22px;text-align:center;color:var(--muted);font-size:15px;line-height:1.5}
+.lp-empty b{display:block;color:var(--ink);font-size:17px;margin-bottom:6px}
+.lp-note{margin-top:12px;font-size:12.5px;color:#7A8A97}
+
+/* narrow (iPad portrait with the rail, phones): each unit becomes a card —
+   the details on top, its bars on a full-width strip underneath */
+@media (max-width:899px){
+  .lp-axis,.lp-row{grid-template-columns:minmax(0,1fr)}
+  .lp-axis .lp-ul{display:none}
+  .lp-axis .lp-track,.lp-bars{margin:0 14px}
+  .lp-info{padding:14px 14px 4px}
+  .lp-bars{min-height:52px;height:52px}
+  .lp-row{min-height:0}
+  .lp-tap{grid-column:1;padding:0 14px 10px}
+}
+/* v1.623: thermometers + probes in use */
+.lp-sec{display:flex;align-items:center;gap:10px;margin:22px 0 10px;font-size:11px;font-weight:700;letter-spacing:1.2px;color:#8A99A6;text-transform:uppercase}
+.lp-sec::after{content:"";flex:1;height:1px;background:var(--line)}
+.lp-kit{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px;margin-bottom:6px}
+.lp-th{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px 16px 12px;min-width:0;border-top:5px solid var(--fam)}
+.lp-th.f-dostmann,.lp-chip.f-dostmann{--fam:#0081C8;--famBg:#E6F3FB}
+.lp-th.f-fluke_comark,.lp-chip.f-fluke_comark{--fam:#0F8B8D;--famBg:#E2F4F4}
+.lp-th-h{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px 10px;justify-content:space-between}
+.lp-th-n{font-size:17px;font-weight:780;color:var(--fam)}
+.lp-th-s{font-family:var(--mono);font-size:13px;color:#33414C;margin-top:1px}
+.lp-th-st{font-size:13px;font-weight:700;padding:5px 10px;border-radius:999px;max-width:100%;background:#E7F6EE;color:#178048}
+.lp-th-st.busy{background:#E3F1FA;color:#006BA6}
+.lp-pr{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:7px;margin-top:12px}
+.lp-p{border-radius:11px;padding:7px 9px 6px;min-height:58px;border:1.5px solid #CFE9DA;background:#F6FCF8;min-width:0}
+.lp-p b{display:flex;align-items:baseline;gap:5px;font-size:18px;font-weight:800;color:#178048}
+.lp-p b small{font-size:10.5px;font-weight:700;color:#7A8A97;font-family:var(--mono)}
+.lp-p span{display:block;font-size:11.5px;color:#4E5E6A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.lp-p.use{border-color:var(--stab);background:#FDF1E3}
+.lp-p.use b{color:#B45F06}
+.lp-p.booked{border-style:dashed;border-color:#D9A45B;background:#FFFBF4}
+.lp-p.booked b{color:#9A6510}
+.lp-th-free{margin-top:10px;font-size:13px;color:#33414C}
+.lp-th-free b{color:#178048}
+.lp-kitnote{font-size:13px;color:var(--muted);background:#fff;border:1px dashed #D3DCE4;border-radius:14px;padding:14px 16px}
+/* row: thermometer + probes of the unit, next time to enter */
+.lp-chip{display:inline-flex;align-items:center;gap:6px;max-width:100%;margin-top:5px;padding:3px 9px;border-radius:8px;background:var(--famBg);color:var(--fam);
+  font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lp-chip i{font-style:normal;font-family:var(--mono);font-weight:600;color:#33414C}
+.lp-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.lp-acts .lp-open{margin-top:0}
+.lp-set{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;border-radius:10px;border:0;background:#0081C8;color:#fff;
+  font:700 13px var(--sans);cursor:pointer;touch-action:manipulation}
+.lp-set svg{width:15px;height:15px}
+.lp-set small{font-weight:600;opacity:.85}
+.lp-bars.can-set{cursor:crosshair}
+.lp-hint{grid-column:2;font-size:12px;color:#7A8A97;padding:0 18px 8px 0}
+/* tap on the timeline → "set this time" */
+.lp-pop{position:absolute;z-index:6;top:50%;transform:translateY(-50%);background:#10293A;color:#fff;border-radius:12px;padding:8px;display:flex;align-items:center;gap:6px;
+  box-shadow:0 8px 24px rgba(0,0,0,.28);white-space:nowrap}
+.lp-pop button{min-height:38px;min-width:38px;border-radius:9px;border:0;font:700 14px var(--sans);cursor:pointer;touch-action:manipulation}
+.lp-pop .pm{background:#24435A;color:#fff}
+.lp-pop .go{background:#0A93DB;color:#fff;padding:0 12px}
+.lp-pop .x{background:transparent;color:#9FB3C2}
+.lp-pop b{font-variant-numeric:tabular-nums;font-size:16px;padding:0 4px}
+.lp-pin{position:absolute;top:6px;bottom:6px;width:2px;margin-left:-1px;background:#10293A;z-index:5;pointer-events:none}
+/* waiting units */
+.lp-wait{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.lp-wj{padding:10px 18px;background:#F7F9FB;border-bottom:1px solid var(--line);font-size:13.5px;font-weight:700;color:#33414C}
+.lp-wj span{font-weight:500;color:var(--muted)}
+.lp-wu{display:flex;align-items:center;gap:12px;padding:10px 18px;border-bottom:1px solid #EEF1F4}
+.lp-wu:last-child{border-bottom:0}
+.lp-wu .lp-txt{min-width:0;flex:1}
+.lp-lock{display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border-radius:10px;border:1px dashed #C7D1DA;color:#5B6B79;font-size:13px;font-weight:650;text-decoration:none;white-space:nowrap}
+@media (max-width:899px){.lp-hint{grid-column:1;padding:0 14px 8px}.lp-kit{grid-template-columns:1fr}}
+@media (max-width:620px){.lp-wu{flex-wrap:wrap}}
+@media print{.lcs-menu{display:none}}
+</style>
+<link rel="stylesheet" href="labcal_shell.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="lp-head">
+    <div>
+      <h1>Live probes</h1>
+      <p>Every unit with times today on this iPad — any tab, any job — on one timeline</p>
+    </div>
+    <div class="lp-clock" id="lpClock"></div>
+  </div>
+  <div class="lp-tiles" id="lpTiles"></div>
+  <div class="lp-sec">Thermometers &amp; probes now</div>
+  <div class="lp-kit" id="lpKit"></div>
+  <div class="lp-sec">Timeline</div>
+  <div class="lp-card">
+    <div id="lpGrid" class="lp-grid"></div>
+    <div class="lp-foot">
+      <span><i style="background:var(--stab)"></i>Stabilise</span>
+      <span><i style="background:var(--cycle)"></i>Cycle</span>
+      <span><i style="background:var(--adjust)"></i>Adjust</span>
+      <span><i style="background:var(--cert)"></i>Cert</span>
+      <span><i style="background:var(--stab);background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.45) 0 3px,transparent 3px 6px);opacity:.7"></i>Planned (no Cycle start yet)</span>
+      <span class="lp-rules">Rules: stabilise ≥ 30 min · cycle ≥ 20 min (Air) / 40 min (Air + Load)</span>
+    </div>
+  </div>
+  <div id="lpWaitBox"></div>
+  <p class="lp-note">Read from the worksheets on this iPad — it updates by itself while LabCal is open. There are no alarms: an iPad does not let a web app wake itself in the background. Tap a bar to see its times. Tap the timeline of a unit (or its blue button) to set its next time: the worksheet opens with the time picker ready and nothing is saved until you tap OK there.</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var S = window.LabCalSchedule;
+  var grid = document.getElementById('lpGrid'), tiles = document.getElementById('lpTiles'), clock = document.getElementById('lpClock');
+  var kitBox = document.getElementById('lpKit'), waitBox = document.getElementById('lpWaitBox');
+  var SET_KEY = 'labcal.live.setTime';      // v1.623: read by labcal_timing.js on the worksheet
+  var CLOCK_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M10 2h4"/></svg>';
+  var geo = null;    // {from, span} of the last drawn timeline
+  var pop = null;    // {i, min} while the "set this time" bubble is open
+  var waitList = [];
+  var ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2.5" width="14" height="19" rx="2"/><path d="M5 10h14M9 6v2M9 13v3"/></svg>';
+  var SEG_NAME = { stab: 'Stabilise', cycle: 'Cycle', adjust: 'Adjust', cert: 'Cert' };
+  var last = null;
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function hm(abs) { return S.hhmm(abs); }
+
+  function tileHtml(cls, label, big, small) {
+    return '<div class="lp-tile ' + cls + '"><span>' + esc(label) + '</span><b>' + esc(big) + '</b>' + (small ? '<small>' + esc(small) + '</small>' : '') + '</div>';
+  }
+
+  // v1.623: thermometers and their probes — in use, booked, free
+  function renderKit(d) {
+    var list = [];
+    try { list = S.kit ? S.kit(d) : []; } catch (e) { console.error('Live probes: thermometers', e); kitBox.innerHTML = '<div class="lp-kitnote">Thermometers could not be read: ' + esc(e && e.message) + '</div>'; return; }
+    if (!list.length) {
+      kitBox.innerHTML = '<div class="lp-kitnote">No thermometer to show — load the Dostmann and Fluke &amp; Comark offsets files (Settings) to see every probe, or enter times on a worksheet.</div>';
+      return;
+    }
+    kitBox.innerHTML = list.map(function (c) {
+      var st = c.measuring ? '<span class="lp-th-st busy">Measuring ' + esc(c.measuring.who) + (c.measuring.until ? ' · until ' + esc(c.measuring.until) : '') + '</span>'
+                           : '<span class="lp-th-st">Free to measure</span>';
+      var probes = c.probes.map(function (p) {
+        var w = p.who.filter(function (x) { return x.state === p.state; })[0] || p.who[0];
+        var line = p.state === 'use' ? esc(w.serial || w.who) + (p.who.length > 1 ? ' (+' + (p.who.length - 1) + ')' : '') + '</span><span>' + (w.until ? 'until ' + w.until : 'in since ' + w.from)
+                 : p.state === 'booked' ? esc(w.serial || w.who) + '</span><span>from ' + w.from : 'free';
+        var title = p.who.map(function (x) { return x.who + ' — ' + (x.row === 'al' ? 'As Left ' : 'As Found ') + x.from + '–' + (x.until || '…'); }).join('\n');
+        return '<div class="lp-p ' + p.state + '" data-probe="' + esc(p.name) + '"' + (title ? ' title="' + esc(title) + '"' : '') + '><b>' + esc(p.name) +
+          (p.port ? '<small>' + esc(p.port) + '</small>' : '') + '</b><span>' + line + '</span></div>';
+      }).join('');
+      return '<div class="lp-th f-' + esc(c.fam) + '" data-fam="' + esc(c.fam) + '" data-therm="' + esc(c.therm) + '">' +
+        '<div class="lp-th-h"><div><div class="lp-th-n">' + esc(c.famName) + '</div><div class="lp-th-s">' +
+          (c.therm ? 'Thermometer ' + esc(c.therm) : 'Thermometer not chosen on the worksheet') + (c.fromFile ? '' : ' · not in the loaded offsets file') + '</div></div>' + st + '</div>' +
+        (probes ? '<div class="lp-pr">' + probes + '</div>' : '') +
+        '<div class="lp-th-free">' + (c.free.length ? 'Free now: <b>' + esc(c.free.join(' · ')) + '</b>' : (c.probes.length ? 'No free probe on this thermometer right now' : 'No probes listed — offsets file not loaded')) +
+        (c.inUse ? ' &nbsp;·&nbsp; in use: ' + c.inUse : '') + '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  // v1.623: units on today's jobs with no times yet
+  function renderWaiting(d) {
+    try { waitList = S.waiting ? S.waiting(d) : []; } catch (e) { waitList = []; console.error('Live probes: waiting units', e); }
+    if (!waitList.length) { waitBox.innerHTML = ''; return; }
+    var html = '<div class="lp-sec">Not started yet today (' + waitList.length + ')</div><div class="lp-wait">', lastJob = null;
+    waitList.forEach(function (w, i) {
+      if (w.job !== lastJob) { lastJob = w.job; html += '<div class="lp-wj">Job ' + esc(w.job) + (w.customer ? ' <span>· ' + esc(w.customer) + '</span>' : '') + '</div>'; }
+      var chip = w.sheet ? '<span class="lp-chip f-' + esc(w.fam) + '">' + esc(w.sheetName) + ' <i>' + esc(w.famName) + '</i></span>' : '';
+      var act = w.decided && w.link
+        ? '<button type="button" class="lp-set" data-wset="' + i + '">' + CLOCK_IC + 'Set Probes loaded at</button>'
+        : '<a class="lp-lock" href="' + esc(w.jobLink) + '">' + (w.suggested ? 'Suggested ' + esc(w.sheetName) + ' — confirm the worksheet first ›' : 'Choose the worksheet first ›') + '</a>';
+      html += '<div class="lp-wu" data-wserial="' + esc(w.serial) + '"><span class="lp-ico">' + ICON + '</span><div class="lp-txt">' +
+        '<div class="lp-t1">' + esc(w.model || 'Unit') + '<span class="lp-sn">' + esc(w.serial || 'no serial') + '</span></div>' +
+        (w.location ? '<div class="lp-t2">' + esc(w.location) + '</div>' : '') + chip + '</div>' + act + '</div>';
+    });
+    waitBox.innerHTML = html + '</div>';
+  }
+
+  // v1.623: ask the worksheet for a time. Nothing is written here — the
+  // worksheet opens with its own time picker on that pair (labcal_timing.js).
+  function askTime(job, serial, base, min, href) {
+    var note = { job: job, serial: serial, base: base, at: Date.now() };
+    if (min !== null && min !== undefined) { var t = S.hhmm(min).split(':'); note.h = t[0]; note.m = t[1]; }
+    try { sessionStorage.setItem(SET_KEY, JSON.stringify(note)); }
+    catch (e) { alert('This iPad would not keep the time request (storage blocked). Open the worksheet and set ' + (S.SET_LABELS[base] || 'the time') + ' there.'); }
+    location.href = href;
+  }
+
+  function drawPop() {
+    Array.prototype.forEach.call(grid.querySelectorAll('.lp-pop, .lp-pin'), function (e) { e.remove(); });
+    if (!pop || !last || !geo) return;
+    pop.i = -1;
+    last.rows.forEach(function (x, k) { if (keyOf(x) === pop.key) pop.i = k; });   // rows may have moved since the tap
+    var r = last.rows[pop.i];
+    var row = grid.querySelector('.lp-row[data-row="' + pop.i + '"]');
+    if (!r || !r.set || !row) { pop = null; return; }
+    var bars = row.querySelector('.lp-bars');
+    var left = Math.max(0, Math.min(100, (pop.min - geo.from) / geo.span * 100));
+    var pin = document.createElement('div'); pin.className = 'lp-pin'; pin.style.left = left + '%';
+    var b = document.createElement('div'); b.className = 'lp-pop';
+    if (left > 50) { b.style.right = 'calc(' + (100 - left) + '% + 8px)'; } else { b.style.left = 'calc(' + left + '% + 8px)'; }   // beside the pin, never off the card
+    b.innerHTML = '<button type="button" class="pm" data-pm="-1" aria-label="1 minute earlier">−</button><b>' + S.hhmm(pop.min) + '</b>' +
+      '<button type="button" class="pm" data-pm="1" aria-label="1 minute later">+</button>' +
+      '<button type="button" class="go" data-pgo="1">Set ' + esc(r.set.label) + ' ›</button><button type="button" class="x" data-px="1" aria-label="Close">✕</button>';
+    bars.appendChild(pin); bars.appendChild(b);
+  }
+  function keyOf(r) { return r.job + '|' + r.serial; }
+
+  function render() {
+    if (!S || !S.live) { grid.innerHTML = '<div class="lp-empty"><b>Live probes could not start</b>labcal_schedule.js is missing — reload LabCal.</div>'; return; }
+    var d;
+    try { d = S.live(); } catch (e) { console.error('Live probes failed', e); grid.innerHTML = '<div class="lp-empty"><b>Live probes could not read the worksheets</b>' + esc(e && e.message) + '</div>'; return; }
+    last = d;
+    clock.textContent = new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' · ' + hm(d.now);
+    tiles.innerHTML =
+      tileHtml('t-run', 'Running', String(d.running), d.running ? 'stabilising, cycling or adjusting' : 'nothing running') +
+      tileHtml('t-ready', 'Ready for next step', String(d.ready), d.ready ? 'waiting for you' : '') +
+      tileHtml('t-next', 'Next action', d.next ? d.next.text : '—', d.next ? (d.next.row.model || d.next.row.sheetName) + ' ' + d.next.row.serial : 'no timer running') +
+      tileHtml('t-fin', 'Finished today', String(d.finished), '');
+    renderKit(d);
+    renderWaiting(d);
+    if (!d.rows.length) {
+      geo = null; pop = null;
+      grid.innerHTML = '<div class="lp-empty"><b>No unit has times entered today</b>A unit appears here as soon as "Probes loaded at" is entered on its worksheet (SMD, SNMD, NSMD, IBB, 19/24).</div>';
+      return;
+    }
+    var s0 = d.now, e0 = d.now;
+    d.rows.forEach(function (r) { r.segs.forEach(function (g) { if (g.s < s0) s0 = g.s; if (g.e > e0) e0 = g.e; }); });
+    var from = Math.floor((s0 - 15) / 60) * 60, to = Math.ceil((e0 + 20) / 60) * 60;
+    if (to - from < 240) to = from + 240;
+    var span = to - from, pct = function (v) { return ((v - from) / span * 100).toFixed(3) + '%'; };
+    geo = { from: from, span: span };
+    var step = span > 14 * 60 ? 180 : span > 8 * 60 ? 120 : 60;
+    var ticks = '';
+    for (var h = Math.ceil(from / step) * step; h <= to; h += step) ticks += '<div class="lp-tick" style="left:' + pct(h) + '"><span>' + hm(h) + '</span></div>';
+    var nowIn = d.now >= from && d.now <= to;
+    var html = '<div class="lp-axis"><div class="lp-ul">Unit</div><div class="lp-track">' + ticks +
+      (nowIn ? '<div class="lp-nowtag" style="left:' + pct(d.now) + '">' + hm(d.now) + '</div>' : '') + '</div></div>';
+    d.rows.forEach(function (r, i) {
+      var where = [r.location, r.sheetName + (r.job ? ' · job ' + r.job : '')].filter(Boolean).join(' · ');
+      var bars = r.segs.map(function (g) {
+        var mins = g.e - g.s;
+        var lbl = g.kind === 'cert' ? '' : g.kind === 'cycle' ? 'Cycle ' + mins : SEG_NAME[g.kind];
+        var what = (g.row === 'af' ? 'As Found ' : g.row === 'al' ? 'As Left ' : '') + SEG_NAME[g.kind].toLowerCase() + ' ' +
+          (g.kind === 'cert' ? '— certificate made' : hm(g.s) + '–' + hm(g.e) + ' (' + mins + ' min)' + (g.planned ? ' — planned, Cycle start not entered yet' : ''));
+        return '<button type="button" class="lp-seg k-' + g.kind + (g.planned ? ' planned' : '') + '" style="left:' + pct(g.s) + ';width:' + (mins / span * 100).toFixed(3) + '%"' +
+          ' data-what="' + esc(what) + '" title="' + esc(what) + '">' + esc(lbl) + '</button>';
+      }).join('');
+      html += '<div class="lp-row k-' + r.kind + (r.done ? ' done' : '') + '" data-row="' + i + '" data-serial="' + esc(r.serial) + '">' +
+        '<div class="lp-info"><span class="lp-ico">' + ICON + '</span><div class="lp-txt">' +
+          '<div class="lp-t1">' + esc(r.model || r.sheetName) + '<span class="lp-sn">' + esc(r.serial || 'no serial') + '</span></div>' +
+          '<div class="lp-t2" title="' + esc(where) + '">' + esc(where) + '</div>' +
+          '<div class="lp-st">' + esc(r.text) + '</div>' +
+          kitChip(r) +
+          '<div class="lp-acts">' +
+          (r.set ? '<button type="button" class="lp-set" data-set="' + i + '">' + CLOCK_IC + 'Set ' + esc(r.set.label) + (r.set.fromText ? ' <small>from ' + esc(r.set.fromText) + '</small>' : '') + '</button>' : '') +
+          (r.link ? '<a class="lp-open" href="' + esc(r.link) + '">' + (r.done ? 'View on job ›' : 'Open worksheet ›') + '</a>' : '') +
+          '</div>' +
+        '</div></div>' +
+        '<div class="lp-bars' + (r.set ? ' can-set' : '') + '">' + ticks.replace(/<span>[^<]*<\/span>/g, '') + bars + (nowIn ? '<div class="lp-nowline" style="left:' + pct(d.now) + '"></div>' : '') + '</div>' +
+        '<div class="lp-tap"></div>' +
+      '</div>';
+    });
+    grid.innerHTML = html;
+    drawPop();
+  }
+
+  // the unit's thermometer and probes (in use now, else the ones on its worksheet)
+  function kitChip(r) {
+    if (!r.fam) return '';
+    var names = r.probes.length ? r.probes.map(function (p) { return p.probe; }) : r.allProbes;
+    var fam = r.fam === 'dostmann' ? 'Dostmann' : 'Fluke & Comark';
+    return '<span class="lp-chip f-' + esc(r.fam) + '" title="' + esc(fam + ' ' + (r.therm || '') + (names.length ? ' — probes ' + names.join(', ') : '')) + '">' + esc(fam) +
+      ' <i>' + esc(r.therm || 'no thermometer yet') + (names.length ? ' · ' + esc(names.join(' ')) : '') + '</i></span>';
+  }
+
+  // Tap a bar → its times under the row (no hover on an iPad).
+  grid.addEventListener('click', function (e) {
+    var t = e.target && e.target.closest ? e.target : null;
+    if (!t) return;
+    // the "set this time" bubble
+    if (t.closest('.lp-pop')) {
+      var pb = t.closest('button');
+      if (!pb || !pop) return;
+      if (pb.getAttribute('data-pm')) { pop.min += Number(pb.getAttribute('data-pm')); drawPop(); return; }
+      if (pb.getAttribute('data-px')) { pop = null; drawPop(); return; }
+      if (pb.getAttribute('data-pgo')) { var pr = last.rows[pop.i]; askTime(pr.job, pr.serial, pr.set.base, pop.min, pr.link); }
+      return;
+    }
+    var sb = t.closest('[data-set]');
+    if (sb) { var r0 = last && last.rows[Number(sb.getAttribute('data-set'))]; if (r0 && r0.set) askTime(r0.job, r0.serial, r0.set.base, null, r0.link); return; }
+    var b = t.closest('.lp-seg');
+    if (b) {
+      var row = b.closest('.lp-row'), tap = row && row.querySelector('.lp-tap');
+      if (tap) tap.textContent = b.getAttribute('data-what');
+      return;
+    }
+    // v1.623 (Radek): tap the unit's timeline where the next time should be
+    var track = t.closest('.lp-bars.can-set');
+    if (track && geo && last) {
+      var i = Number(track.closest('.lp-row').getAttribute('data-row')), r = last.rows[i];
+      if (!r || !r.set) return;
+      var rc = track.getBoundingClientRect(), x = (e.clientX - rc.left) / Math.max(1, rc.width);
+      var m = geo.from + x * geo.span;
+      m = Math.abs(m - last.now) <= 3 ? last.now : Math.round(m / 5) * 5;   // near the red line = now, else the nearest 5 min
+      pop = { i: i, key: keyOf(r), min: m };
+      drawPop();
+    }
+  });
+  waitBox.addEventListener('click', function (e) {
+    var b = e.target && e.target.closest ? e.target.closest('[data-wset]') : null;
+    if (!b) return;
+    var w = waitList[Number(b.getAttribute('data-wset'))];
+    if (w && w.decided && w.link) askTime(w.job, w.serial, 'af_probes_in', null, w.link);
+  });
+
+  var pending = null;
+  function soon() { if (pending) clearTimeout(pending); pending = setTimeout(function () { pending = null; render(); }, 300); }
+  window.addEventListener('storage', function (e) {
+    if (!e || !e.key || /^labcal\.(unit|jobsheet|progress)/.test(e.key)) soon();
+  });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) render(); });
+  window.addEventListener('pageshow', function () { render(); });
+  setInterval(function () { if (!document.hidden) render(); }, 20000);
+  render();
+
+  window.LabCalLive = { render: render, data: function () { return last; }, waiting: function () { return waitList; }, geo: function () { return geo; } };
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,306 @@
+/* LabCal v1.619 — side menu + flat card look (UI redesign, stage 1).
+   ---------------------------------------------------------------------------
+   Goes with labcal_shell.js. Loaded LAST on every page. Screen only.
+   Worksheet pages: only the menu rail is drawn — nothing inside .page /
+   #page is touched, and the rail is hidden while a certificate PDF is made
+   (.printMode) and when printing, so every certificate comes out exactly as
+   in v1.618.
+
+   Section pages (index, calibration, tools, monitoring) get the new look:
+   light grey background, white cards with a thin border, radius 16, Labcold
+   blue #0081C8. Colours / spacing only — no markup or logic changes. */
+
+@media screen{
+
+/* ---------- the menu itself ---------- */
+.lcs-menu{
+  position:fixed;z-index:30;top:0;bottom:0;left:0;width:226px;
+  display:flex;flex-direction:column;gap:6px;
+  padding:calc(16px + env(safe-area-inset-top,0px)) 12px calc(12px + env(safe-area-inset-bottom,0px)) calc(12px + env(safe-area-inset-left,0px));
+  background:#fff;border-right:1px solid #E5E9EF;
+  font-family:-apple-system,"SF Pro Text","Inter","Segoe UI",Helvetica,Arial,sans-serif;color:#10293A;
+  overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+  box-sizing:border-box;-webkit-tap-highlight-color:transparent;
+}
+.lcs-menu *{box-sizing:border-box}
+.lcs-brand{display:flex;align-items:center;gap:11px;width:100%;min-height:52px;padding:4px 6px 12px;margin:0;
+  border:0;background:none;text-align:left;cursor:pointer;color:inherit;font:inherit}
+/* v1.620: Labcold logo panel on top of the menu; LabCal name under it */
+.lcs-brand{flex-direction:column;align-items:stretch;gap:9px}
+.lcs-logo{display:flex;align-items:center;justify-content:center;height:58px;border-radius:14px;flex:0 0 auto;
+  background:linear-gradient(135deg,#0A93DB 0%,#0081C8 55%,#006BA6 100%);box-shadow:0 3px 10px rgba(0,129,200,.28)}
+.lcs-logo img{display:block;width:150px;height:auto;max-width:86%}
+.lcs-flake{display:none;width:27px;height:30px;background:url(labcold-logo-white.png) -2px -2px/auto 34px no-repeat}
+.lcs-brand .lcs-bt{padding:0 6px}
+.lcs-bt{display:flex;flex-direction:column;line-height:1.15;min-width:0}
+.lcs-bt b{font-size:17px;font-weight:750;letter-spacing:-.2px}
+.lcs-bt small{font-size:11.5px;color:#5B6B79;white-space:nowrap}
+.lcs-items{display:flex;flex-direction:column;gap:3px;flex:1}
+.lcs-sep{font-size:10.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:#8A99A6;padding:14px 12px 4px}
+.lcs-item{position:relative;display:flex;align-items:center;gap:12px;min-height:46px;padding:0 12px;border-radius:12px;
+  color:#2A3C4A;text-decoration:none;font-size:15px;font-weight:550;white-space:nowrap}
+.lcs-item .lcs-ic{width:21px;height:21px;flex:0 0 auto;color:#5B6B79}
+.lcs-item.on{background:#E6F3FB;color:#006BA6}
+.lcs-item.on .lcs-ic{color:#0081C8}
+@media (hover:hover){ a.lcs-item:not(.on):hover{background:#F2F5F8} }
+a.lcs-item:active{background:#E6F3FB}
+.lcs-soon{color:#9AA8B4;cursor:default}
+.lcs-soon .lcs-ic{color:#B6C1CA}
+.lcs-tag{margin-left:auto;font-size:9.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#9AA8B4;
+  border:1px solid #DCE3E9;border-radius:999px;padding:2px 7px}
+.lcs-badge{margin-left:auto;min-width:22px;height:20px;padding:0 6px;border-radius:999px;background:#0081C8;color:#fff;
+  font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.lcs-badge.lcs-run{background:#d97706}  /* v1.622: Live probes = units running */
+.lcs-foot{display:flex;flex-direction:column;gap:2px;border-top:1px solid #E5E9EF;padding-top:10px;margin-top:8px}
+.lcs-f{display:flex;align-items:center;gap:9px;min-height:30px;padding:0 10px;border-radius:10px;font-size:12.5px;color:#4F6576;text-decoration:none;white-space:nowrap;overflow:hidden}
+.lcs-f .lcs-ic{width:16px;height:16px;flex:0 0 auto}
+.lcs-f .lcs-lbl{overflow:hidden;text-overflow:ellipsis}
+a.lcs-f{min-height:36px}
+a.lcs-f:active{background:#F2F5F8}
+.lcs-f.lcs-warn{color:#9A5B00}
+.lcs-f.lcs-bad{color:#B42318}
+.lcs-dot{width:9px;height:9px;border-radius:50%;background:#B6C1CA;flex:0 0 auto;margin:0 3px}
+#lcsOffline.lcs-ok .lcs-dot{background:#1F9D55;box-shadow:0 0 0 3px rgba(31,157,85,.15)}
+#lcsOffline.lcs-no .lcs-dot{background:#E3A008}
+
+.lcs-shade{display:none}
+.lcs-menubtn{display:none}
+
+/* ---------- layouts ---------- */
+/* full menu: section pages on a wide screen */
+html.lcs-section body{margin-left:226px}
+
+/* icon rail: section pages 600–999 px, work pages ≥ 900 px */
+@media (max-width:999px){
+  html.lcs-section body{margin-left:68px}
+  html.lcs-section .lcs-menu{width:68px;padding-left:10px;padding-right:10px;align-items:center}
+}
+@media (min-width:900px){
+  html.lcs-work body{margin-left:68px}
+  html.lcs-work .lcs-menu{width:68px;padding-left:10px;padding-right:10px;align-items:center}
+}
+/* rail look (shared) */
+@media (max-width:999px){
+  html.lcs-section:not(.lcs-open) .lcs-bt,
+  html.lcs-section:not(.lcs-open) .lcs-lbl,
+  html.lcs-section:not(.lcs-open) .lcs-tag,
+  html.lcs-section:not(.lcs-open) .lcs-sep{display:none}
+  html.lcs-section:not(.lcs-open) .lcs-sep + .lcs-item{margin-top:14px}
+  html.lcs-section:not(.lcs-open) .lcs-brand{align-items:center;padding:4px 0 12px}
+  html.lcs-section:not(.lcs-open) .lcs-logo{width:46px;height:46px;border-radius:12px}
+  html.lcs-section:not(.lcs-open) .lcs-logo img{display:none}
+  html.lcs-section:not(.lcs-open) .lcs-flake{display:block}
+  html.lcs-section:not(.lcs-open) .lcs-item{width:48px;justify-content:center;padding:0}
+  html.lcs-section:not(.lcs-open) .lcs-f{width:48px;justify-content:center;padding:0}
+  html.lcs-section:not(.lcs-open) .lcs-badge{position:absolute;top:2px;right:0;min-width:18px;height:17px;font-size:10px;padding:0 4px}
+}
+@media (min-width:900px){
+  html.lcs-work:not(.lcs-open) .lcs-bt,
+  html.lcs-work:not(.lcs-open) .lcs-lbl,
+  html.lcs-work:not(.lcs-open) .lcs-tag,
+  html.lcs-work:not(.lcs-open) .lcs-sep{display:none}
+  html.lcs-work:not(.lcs-open) .lcs-sep + .lcs-item{margin-top:14px}
+  html.lcs-work:not(.lcs-open) .lcs-brand{align-items:center;padding:4px 0 12px}
+  html.lcs-work:not(.lcs-open) .lcs-logo{width:46px;height:46px;border-radius:12px}
+  html.lcs-work:not(.lcs-open) .lcs-logo img{display:none}
+  html.lcs-work:not(.lcs-open) .lcs-flake{display:block}
+  html.lcs-work:not(.lcs-open) .lcs-item{width:48px;justify-content:center;padding:0}
+  html.lcs-work:not(.lcs-open) .lcs-f{width:48px;justify-content:center;padding:0}
+  html.lcs-work:not(.lcs-open) .lcs-badge{position:absolute;top:2px;right:0;min-width:18px;height:17px;font-size:10px;padding:0 4px}
+}
+/* no rail: phones (section pages) and narrow work pages */
+@media (max-width:599px){
+  html.lcs-section body{margin-left:0}
+  html.lcs-section:not(.lcs-open) .lcs-menu{display:none}
+  html.lcs-section .lcs-menubtn{display:flex;position:fixed;z-index:31;left:calc(10px + env(safe-area-inset-left,0px));top:calc(10px + env(safe-area-inset-top,0px));
+    width:44px;height:44px;border-radius:12px;border:1px solid #E5E9EF;background:#fff;color:#10293A;align-items:center;justify-content:center;
+    box-shadow:0 2px 8px rgba(16,41,58,.10);padding:0;cursor:pointer}
+  html.lcs-section .lcs-menubtn .lcs-ic{width:22px;height:22px}
+  html.lcs-section body .wrap{padding-top:64px}  /* v1.620: was overridden by the .wrap rule below → title under the Menu button */
+}
+@media (max-width:899px){
+  html.lcs-work body{margin-left:0}
+  html.lcs-work .lcs-menu{display:none}
+}
+
+/* the whole menu over the page (tap the logo on the rail / the menu button) */
+html.lcs-open .lcs-menu{display:flex;width:260px;align-items:stretch;z-index:950;box-shadow:0 18px 50px rgba(0,30,60,.25)}
+html.lcs-open .lcs-shade{display:block;position:fixed;inset:0;z-index:940;background:rgba(6,24,38,.30)}
+@media (min-width:1000px){ html.lcs-section.lcs-open .lcs-menu{width:226px;box-shadow:none} html.lcs-section.lcs-open .lcs-shade{display:none} }
+
+/* a certificate being made: no menu, no margin (the sheet is laid out as before) */
+html.printMode .lcs-menu,body.printMode .lcs-menu,
+html.printMode .lcs-shade,body.printMode .lcs-shade,
+html.printMode .lcs-menubtn,body.printMode .lcs-menubtn{display:none!important}
+html.lcs.printMode body,html.lcs body.printMode{margin-left:0!important}
+
+/* ---------- section pages: flat card look ---------- */
+html.lcs-section{background:#F4F6F9}
+html.lcs-section body{background:#F4F6F9;background-image:none;color:#10293A;
+  font-family:-apple-system,"SF Pro Text","Inter","Segoe UI",Helvetica,Arial,sans-serif}
+html.lcs-section .gridlines{display:none}
+/* the brand is in the menu now; Back = the menu */
+html.lcs-section .wrap > header,
+html.lcs-section .wrap > .backlink{display:none}
+html.lcs-section .wrap{max-width:1180px;padding-top:26px}
+html.lcs-section .hero{padding:2px 0 18px}
+html.lcs-section .eyebrow{display:none}
+html.lcs-section h1{font-family:inherit;font-size:clamp(26px,3.2vw,34px);font-weight:760;letter-spacing:-.6px;color:#0F1E2A;margin:0 0 6px;max-width:none;line-height:1.15}
+html.lcs-section .lede{font-size:15px;color:#5B6B79;max-width:70ch}
+html.lcs-section .section-label{font-family:inherit;font-size:11px;font-weight:700;letter-spacing:1.2px;color:#8A99A6}
+
+html.lcs-section .card,html.lcs-section .offlinebox,html.lcs-section .slot,html.lcs-section .backup,
+html.lcs-section .pdfq,html.lcs-section .homehint,html.lcs-section .updatebanner,html.lcs-section .contjob,
+html.lcs-section .contnext,html.lcs-section .offsets,html.lcs-section .certs,html.lcs-section .job,
+html.lcs-section .lcs-card{
+  background:#fff;border:1px solid #E5E9EF;border-radius:16px;
+  box-shadow:0 1px 2px rgba(16,24,40,.04);
+  -webkit-backdrop-filter:none;backdrop-filter:none;
+}
+html.lcs-section .card.planned,html.lcs-section .card.addnew,html.lcs-section .slot.lvl-none,
+html.lcs-section .certs.empty,html.lcs-section .job.empty{background:#FAFBFC;border:1px dashed #D3DCE4;box-shadow:none}
+html.lcs-section .slot.lvl-soon,html.lcs-section .backup.warn{border-color:#E9C98B;background:#FFFBF2}
+html.lcs-section .slot.lvl-critical,html.lcs-section .slot.lvl-expired,html.lcs-section .backup.stale{border-color:#E7B4AD;background:#FFF7F6}
+html.lcs-section .homehint{border-left:4px solid #0081C8}
+html.lcs-section .homehint.restore{border-color:#E9C98B;border-left-color:#D08A1A;background:#FFFBF2}
+html.lcs-section .contjob,html.lcs-section .contnext{border-color:#BFE0F3;border-left:4px solid #0081C8}
+html.lcs-section .contjob.cj-joined{border-bottom-left-radius:0;border-bottom-right-radius:0;border-bottom:0}
+html.lcs-section .contnext{border-top:0;border-radius:0 0 16px 16px}
+html.lcs-section .updatebanner{border-color:#BFE0F3;background:#F3F9FD}
+@media (hover:hover){
+  html.lcs-section .card.active:hover{transform:none;border-color:#BFE0F3;background:#fff;box-shadow:0 6px 18px rgba(16,41,58,.08)}
+}
+html.lcs-section .card.locked{background:#FAFBFC}
+html.lcs-section .schip{background:#fff;border-color:#E5E9EF;box-shadow:none}
+html.lcs-section .schip.ok{border-color:#BFE5CF}
+html.lcs-section .schip.warn{border-color:#E9C98B;background:#FFFBF2}
+html.lcs-section .schip.bad{border-color:#E7B4AD;background:#FFF5F4}
+html.lcs-section .jmore{background:#fff;border-color:#E5E9EF;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:0 18px 44px rgba(0,40,80,.18)}
+html.lcs-section .cell:not(.sel){background:#fff}
+html.lcs-section footer{border-top-color:#E5E9EF}
+
+/* ---------- Home: page title + Settings as its own view ---------- */
+.lcs-pagehead{display:none}
+html.lcs-section .lcs-pagehead{display:block;margin:0 0 16px}
+html.lcs-section .lcs-pagehead p{margin:0;font-size:15px;color:#5B6B79}
+html.lcs-section .lcs-head-settings{display:none}
+/* v1.620: Labcold logo next to "Today" when the full menu (with its logo) is not on screen */
+.lcs-headlogo{display:none}
+@media (max-width:999px){
+  html.lcs-section .lcs-head-today{display:flex;flex-wrap:wrap;align-items:center;column-gap:16px}
+  html.lcs-section .lcs-head-today h1{flex:1 1 auto;min-width:0}
+  html.lcs-section .lcs-head-today p{flex-basis:100%}
+  html.lcs-section .lcs-headlogo{display:flex;align-items:center;justify-content:center;height:44px;padding:0 16px;border-radius:12px;
+    background:linear-gradient(135deg,#0A93DB 0%,#0081C8 55%,#006BA6 100%);box-shadow:0 3px 10px rgba(0,129,200,.25)}
+  html.lcs-section .lcs-headlogo img{display:block;width:128px;height:auto}
+  html.lcs-view-settings .lcs-head-today{display:none}
+}
+html.lcs-view-settings .lcs-head-today{display:none}
+html.lcs-view-settings .lcs-head-settings{display:block}
+/* ---------- v1.623 Today: big clock, area buttons one under another, no Settings button ---------- */
+html.lcs-section .lcs-head-today{display:block!important}
+html.lcs-view-settings .lcs-head-today{display:none!important}
+.td-clock{position:relative;border-radius:22px;padding:20px 26px 22px;color:#fff;overflow:hidden;
+  background:radial-gradient(120% 140% at 100% 0%,#24A9EC 0%,#0081C8 45%,#00598C 100%);box-shadow:0 10px 30px rgba(0,90,140,.22)}
+.td-clock::after{content:"";position:absolute;right:-60px;top:-60px;width:260px;height:260px;border-radius:50%;border:34px solid rgba(255,255,255,.07);pointer-events:none}
+.td-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+html.lcs-section .td-clock h1{margin:0;color:rgba(255,255,255,.86);font-size:15px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase}
+html.lcs-section .td-clock .lcs-headlogo{display:flex;height:auto;padding:0;background:none;box-shadow:none}
+.td-clock .lcs-headlogo img{width:118px;height:auto;display:block;opacity:.95}
+@media (min-width:1000px){html.lcs-section .td-clock .lcs-headlogo{display:none}}   /* the full menu shows the logo */
+.td-time{font-variant-numeric:tabular-nums;font-weight:780;letter-spacing:-3px;line-height:1;margin:14px 0 8px;font-size:clamp(76px,13vw,150px)}
+.td-sec{font-size:.34em;font-weight:650;letter-spacing:0;opacity:.7;margin-left:6px;vertical-align:.95em}
+.td-date{font-size:clamp(19px,2.4vw,26px);font-weight:500;color:rgba(255,255,255,.92)}
+.td-date b{font-weight:760;color:#fff}
+html.lcs-section .td-clock p{margin:10px 0 0;font-size:15px;color:rgba(255,255,255,.85)}
+html.lcs-section .td-clock p[hidden]{display:none}
+@media (max-width:620px){.td-clock{padding:16px 18px 18px;border-radius:18px}}
+/* Settings is in the side menu: its button bar only in the Settings view */
+html.lcs-section:not(.lcs-view-settings) #setBar{display:none}
+/* the areas: one full-width button under another */
+html.lcs-section .wrap > #grid.cats{grid-template-columns:1fr;gap:12px}
+html.lcs-section #grid.cats .card{display:grid;grid-template-columns:56px minmax(0,1fr) auto;grid-template-rows:auto auto auto;column-gap:18px;align-items:center;
+  min-height:0;padding:18px 22px}
+html.lcs-section #grid.cats .card-top{grid-column:1;grid-row:1 / span 3;width:56px;height:56px;border-radius:16px;background:#E6F3FB;display:flex;align-items:center;justify-content:center}
+html.lcs-section #grid.cats .card-top .code{display:none}
+html.lcs-section #grid.cats .card-top .icon{width:28px;height:28px;color:#0081C8}
+html.lcs-section #grid.cats .card[data-area="SEC-03"] .card-top{background:#FDF1E3}
+html.lcs-section #grid.cats .card[data-area="SEC-03"] .card-top .icon{color:#D97706}
+html.lcs-section #grid.cats .card[data-area="SEC-02"] .card-top{background:#F1ECFD}
+html.lcs-section #grid.cats .card[data-area="SEC-02"] .card-top .icon{color:#7C3AED}
+html.lcs-section #grid.cats .card.locked .card-top{background:#F1F3F6}
+html.lcs-section #grid.cats .card.locked .card-top .icon{color:#8A99A6}
+html.lcs-section #grid.cats .card h3{grid-column:2;margin:0;font-size:20px;font-weight:720;color:#0F1E2A}
+html.lcs-section #grid.cats .card p{grid-column:2;margin:3px 0 0;font-size:14px;line-height:1.4;color:#5B6B79}
+html.lcs-section #grid.cats .card .contents{grid-column:2;margin-top:8px}
+html.lcs-section #grid.cats .card .contents{display:none}   /* the worksheet list lives under Worksheets */
+html.lcs-section #grid.cats .card .lockmsg{grid-column:2;margin-top:10px}
+html.lcs-section #grid.cats .card .card-foot{grid-column:3;grid-row:1 / span 3;flex-direction:column;align-items:flex-end;gap:8px;margin:0;padding:0;border:0;text-align:right;white-space:nowrap}
+html.lcs-section #grid.cats .card .card-foot .open{min-height:40px;padding:0 16px;border-radius:12px;background:#0081C8;color:#fff;font-size:13px}
+@media (max-width:620px){
+  html.lcs-section #grid.cats .card{grid-template-columns:44px minmax(0,1fr);padding:16px}
+  html.lcs-section #grid.cats .card-top{width:44px;height:44px;border-radius:12px}
+  html.lcs-section #grid.cats .card .contents{display:none}
+  html.lcs-section #grid.cats .card .card-foot{grid-column:2;grid-row:auto;flex-direction:row;justify-content:space-between;width:100%;margin-top:10px}
+}
+
+html.lcs-view-settings #statusStrip,
+html.lcs-view-settings #continueJob,
+html.lcs-view-settings #continueNext,
+html.lcs-view-settings #homeHint,
+html.lcs-view-settings #areaLabel,
+html.lcs-view-settings .wrap > #grid{display:none!important}
+.setbtn .setlbl-close{display:none}
+html.lcs-view-settings .setbtn .setlbl{display:none}
+html.lcs-view-settings .setbtn .setlbl-close{display:inline}
+html.lcs-view-settings .setbtn .chev{transform:rotate(90deg)}
+html.lcs-view-settings #settingsHint{display:none}
+html.lcs-view-settings .setbar{margin:0 0 14px}
+
+.lcs-subnav{display:none}
+html.lcs-view-settings #settingsDrawer.open{display:grid;grid-template-columns:230px minmax(0,1fr);gap:0 20px;align-items:start}
+html.lcs-view-settings #settingsDrawer.open > .drawergroup{grid-column:2;min-width:0}
+html.lcs-view-settings .lcs-subnav{display:flex;flex-direction:column;gap:3px;grid-column:1;grid-row:1 / span 6;
+  position:sticky;top:16px;padding:10px;background:#fff;border:1px solid #E5E9EF;border-radius:16px}
+.lcs-subnav button{display:flex;align-items:center;gap:10px;min-height:46px;padding:0 12px;border:0;border-radius:12px;background:none;
+  font:inherit;font-size:14.5px;font-weight:550;color:#2A3C4A;text-align:left;cursor:pointer}
+.lcs-subnav button .lcs-ic{width:19px;height:19px;color:#5B6B79;flex:0 0 auto}
+.lcs-subnav button.on{background:#E6F3FB;color:#006BA6}
+.lcs-subnav button.on .lcs-ic{color:#0081C8}
+@media (max-width:1099px){
+  html.lcs-view-settings #settingsDrawer.open{display:block}
+  html.lcs-view-settings .lcs-subnav{display:none}
+}
+html.lcs-view-settings .drawergroup{scroll-margin-top:16px}
+html.lcs-view-settings .vault{grid-template-columns:1fr}
+.lcs-eng{padding:16px 18px;margin:0 0 10px}
+.lcs-eng .lcs-eng-row{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid #EEF1F4;font-size:14px}
+.lcs-eng .lcs-eng-row:last-child{border-bottom:0}
+.lcs-eng .lcs-eng-k{min-width:150px;color:#5B6B79}
+.lcs-eng .lcs-eng-v{font-weight:650;color:#10293A}
+.lcs-eng .lcs-eng-note{font-size:12.5px;color:#7F93A3;font-weight:400}
+
+/* Backup chip pointed at from the menu */
+@keyframes lcsPulse{0%,100%{box-shadow:0 0 0 0 rgba(0,129,200,0)}50%{box-shadow:0 0 0 6px rgba(0,129,200,.28)}}
+.schip.lcs-pulse{animation:lcsPulse 1s ease-in-out 3}
+
+/* ---------- Tools page ---------- */
+html.lcs-section .tl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+html.lcs-section a.card.tl{flex-direction:row;align-items:center;gap:16px;min-height:0;padding:18px 18px 18px 20px}
+html.lcs-section .tl-ico{width:52px;height:52px;border-radius:14px;flex:0 0 auto;display:flex;align-items:center;justify-content:center}
+html.lcs-section .tl-ico .icon{width:26px;height:26px}
+html.lcs-section .tl-ico.c-blue{background:#E6F3FB;color:#0081C8}
+html.lcs-section .tl-ico.c-violet{background:#F1ECFD;color:#7C3AED}
+html.lcs-section .tl-ico.c-amber{background:#FDF3E3;color:#C26A00}
+html.lcs-section .tl-ico.c-green{background:#E7F6EE;color:#1F9D55}
+html.lcs-section .card.tl .card.active .icon,html.lcs-section .tl-ico .icon{color:inherit}
+html.lcs-section .tl-txt{flex:1;min-width:0}
+html.lcs-section .card.tl h3{margin:0 0 3px;font-size:17px;font-weight:700;color:#0F1E2A}
+html.lcs-section .card.tl p{margin:0;font-size:13.5px;line-height:1.4;color:#5B6B79}
+html.lcs-section .tl-chev{width:20px;height:20px;color:#9AA8B4;flex:0 0 auto}
+}
+
+@media print{
+  .lcs-menu,.lcs-shade,.lcs-menubtn{display:none!important}
+  html.lcs body{margin-left:0!important}
+}
