@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0A5CA8">
+<title>LabCal Mobile – TEST</title>
+<!--
+  LabCal Mobile — ONE-OFF TEST BUILD (based on v1.629), not for real certificates.
+  Idea: the real SMD worksheet (calibration_worksheet_SMD.html) is loaded in a
+  hidden same-origin iframe. This page only shows phone-sized steps, writes the
+  values into the worksheet's own fields and reads results back. The worksheet
+  stays the only place that calculates PASS/FAIL and builds the PDF.
+-->
+<style>
+:root{--blue:#0A5CA8;--blue-d:#074580;--bg:#F3F5F8;--card:#fff;--ink:#15202B;--muted:#4A5868;--line:#E3E8EE;--ok:#1B6B35;--okbg:#E3F3E8;--bad:#A11D1D;--badbg:#FDE8E8;--warn:#8A4B00;--warnbg:#FFF1DC}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+header{background:#fff;border-bottom:1px solid var(--line);padding:calc(env(safe-area-inset-top) + 8px) 8px 10px}
+.hrow{display:flex;align-items:center;gap:6px}
+.iconbtn{width:44px;height:44px;border:0;background:transparent;border-radius:22px;display:flex;align-items:center;justify-content:center;color:var(--ink);font-size:22px}
+.htitle{flex:1;min-width:0;display:flex;flex-direction:column}
+.htitle small{font-size:13px;color:var(--muted);font-weight:600}
+.htitle b{font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.testtag{font-size:11px;font-weight:700;color:var(--warn);background:var(--warnbg);padding:4px 8px;border-radius:999px}
+.prog{display:flex;gap:3px;padding:8px 8px 0}
+.prog i{flex:1;height:5px;border-radius:3px;background:#D5DDE6}
+.prog i.done{background:var(--blue)}.prog i.cur{background:#E59A2B}
+main{flex:1;overflow-y:auto;padding:14px 14px 24px;display:flex;flex-direction:column;gap:10px}
+.card{background:var(--card);border-radius:16px;padding:14px 16px;box-shadow:0 1px 2px rgba(16,32,48,.08);display:flex;flex-direction:column;gap:6px}
+.lbl{font-size:13px;font-weight:600;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.lbl code{font-size:10px;color:#8A97A6;font-weight:400}
+input.big,select.big{width:100%;font:inherit;font-size:20px;font-weight:600;color:var(--ink);border:1px solid #CBD5E0;border-radius:12px;padding:10px 12px;background:#fff;min-height:50px}
+select.big:disabled,input.big:disabled{background:#F1F3F6;color:#8A97A6}
+.numfield{width:100%;text-align:left;font:inherit;font-size:30px;font-weight:700;color:var(--ink);border:2px solid #CBD5E0;border-radius:12px;padding:6px 12px;background:#fff;min-height:58px}
+.numfield.empty{color:#A3AFBC;font-weight:500}
+.numfield.active{border-color:var(--blue);box-shadow:0 0 0 3px rgba(10,92,168,.15)}
+.numfield:disabled{background:#F1F3F6;color:#8A97A6}
+.timeRow{display:flex;gap:8px;align-items:center}.timeRow select{flex:1}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.read{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:12px;background:#F5F7FA;font-size:15px}
+.read b{font-size:18px}
+.read.ok{background:var(--okbg);color:var(--ok)}.read.bad{background:var(--badbg);color:var(--bad)}
+.status{border-radius:14px;padding:14px 16px;font-size:15px;font-weight:600;background:#EEF1F5;color:var(--muted)}
+.status.ok{background:var(--okbg);color:var(--ok)}.status.bad{background:var(--badbg);color:var(--bad)}
+.hint{font-size:13px;color:var(--muted);line-height:1.45}
+.btn{height:52px;border-radius:14px;border:0;font:inherit;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 16px}
+.btn.pri{background:var(--blue);color:#fff}.btn.sec{background:#fff;color:var(--blue);border:1px solid #9DB7D3}
+.btn:disabled{opacity:.5}
+footer{background:#fff;border-top:1px solid var(--line);padding:10px 14px calc(env(safe-area-inset-bottom) + 12px);display:flex;gap:10px}
+footer .btn{flex:1}
+#keypad{display:none;background:#E9EDF2;padding:8px 8px calc(env(safe-area-inset-bottom) + 10px);grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+#keypad.on{display:grid}
+#keypad button{height:54px;border:0;border-radius:12px;background:#fff;font:inherit;font-size:24px;font-weight:600;color:var(--ink)}
+#keypad button.k2{background:#D5DDE6;font-size:17px}
+#keypad button.kok{background:var(--blue);color:#fff;font-size:17px;grid-row:span 2;height:auto}
+#sheetWrap{position:fixed;left:-12000px;top:0;width:1100px;height:1600px;background:#fff;z-index:50}
+#sheetWrap.show{left:0;width:100vw;height:100dvh}
+#sheetWrap iframe{border:0;width:100%;height:100%}
+#sheetBar{display:none;position:absolute;right:10px;top:calc(env(safe-area-inset-top) + 10px);z-index:2}
+#sheetWrap.show #sheetBar{display:block}
+#menu{position:fixed;inset:0;background:rgba(10,20,30,.45);display:none;z-index:40}
+#menu.on{display:block}
+#menu .panel{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:20px 20px 0 0;padding:16px 14px calc(env(safe-area-inset-bottom) + 16px);max-height:80dvh;overflow:auto;display:flex;flex-direction:column;gap:6px}
+#menu .panel button.step{text-align:left;font:inherit;font-size:16px;padding:12px;border:0;border-radius:12px;background:#F5F7FA}
+#menu .panel button.step.cur{background:#EAF2FB;color:var(--blue);font-weight:700}
+#loading{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;z-index:60;font-size:16px;color:var(--muted)}
+#loading.hide{display:none}
+</style>
+</head>
+<body>
+<div id="loading"><b style="font-size:20px;color:#15202B">LabCal Mobile – test</b><span id="loadMsg">Ładowanie arkusza SMD…</span></div>
+
+<header>
+  <div class="hrow">
+    <button class="iconbtn" id="menuBtn" aria-label="Lista kroków">☰</button>
+    <div class="htitle"><small id="stepNo">Krok</small><b id="stepTitle">—</b></div>
+    <span class="testtag">TEST</span>
+    <button class="iconbtn" id="sheetBtn" aria-label="Pokaż cały arkusz">▦</button>
+  </div>
+  <div class="prog" id="prog"></div>
+</header>
+
+<main id="screen"></main>
+
+<div id="keypad" aria-label="Klawiatura numeryczna">
+  <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button><button class="k2" data-k="back" aria-label="Usuń">⌫</button>
+  <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button><button class="k2" data-k="minus">−</button>
+  <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button class="kok" data-k="ok">Dalej</button>
+  <button class="k2" data-k="clear">C</button><button data-k="0">0</button><button data-k=".">.</button>
+</div>
+
+<footer id="footer">
+  <button class="btn sec" id="prevBtn">Wstecz</button>
+  <button class="btn pri" id="nextBtn">Dalej</button>
+</footer>
+
+<div id="menu"><div class="panel" id="menuPanel"></div></div>
+
+<div id="sheetWrap">
+  <div id="sheetBar"><button class="btn pri" id="sheetClose">Wróć do kroków</button></div>
+  <iframe id="ws" src="calibration_worksheet_SMD.html" title="Arkusz SMD" allow="web-share; clipboard-write"></iframe>
+</div>
+
+<input type="file" id="offFile" accept="application/json,.json" hidden>
+<input type="file" id="jobFile" accept="application/pdf,.pdf" hidden>
+
+<script>
+'use strict';
+/* ---------- the steps (field ids are the SMD worksheet's own ids) ---------- */
+const P = ['air1','air2','load','chart'];
+const PL = {air1:'Air 1',air2:'Air 2',load:'Load',chart:'Chart'};
+const STEPS = [
+  {title:'Start', special:'start'},
+  {title:'Dane urządzenia', f:[
+    ['certMode','To urządzenie','certmode'],['deviceType','Typ urządzenia','select'],['jobRef','Numer zlecenia','text'],['site','Szpital / miejsce','text'],['department','Oddział / lokalizacja','text'],
+    ['manufacturer','Producent','select'],['model','Model','text'],['serial','Numer seryjny','text'],
+    ['load','Load','select'],['calSystem','System kalibracji','select']]},
+  {title:'Temperatura pokoju', f:[['rtRef','Termometr pokojowy','select'],['rtMax','Max (°C)','num'],['rtMin','Min (°C)','num'],['rtAvg','Średnia','read']]},
+  {title:'Nastawa i sondy', f:[['initialSetpoint','Nastawa początkowa','num'],['initialOffsetsCal1','Offsety – termometr 1','select'],['initialOffsetsCal2','Offsety – termometr 2','select'],
+    ...P.map(p=>['af_'+p+'_probe','Sonda '+PL[p],'select']),['af_probes_in','Sondy włożone o','time']]},
+  {title:'As Found – czasy', f:[['af_cycle_start','Start cyklu','time'],['af_cycle_end','Koniec cyklu','time'],['af_stabilisation','Stabilizacja','read'],['af_cycletime','Czas cyklu','read']]},
+  {title:'As Found – wyświetlacz', f:[['af_cycle_air_max','Air – Max wyświetlacza','num'],['af_cycle_air_min','Air – Min wyświetlacza','num'],['af_cycle_air_avg','Air – średnia','read'],
+    ['af_cycle_load_max','Load – Max wyświetlacza','num'],['af_cycle_load_min','Load – Min wyświetlacza','num'],['af_cycle_load_avg','Load – średnia','read'],['af_chart_display','Chart – wyświetlacz','num']]},
+  {title:'As Found – odczyty Max', f:P.map(p=>['af_'+p+'_max','Max '+PL[p]+' (wzorzec)','num'])},
+  {title:'As Found – odczyty Min', f:P.map(p=>['af_'+p+'_min','Min '+PL[p]+' (wzorzec)','num'])},
+  {title:'As Found – wynik', special:'result', pre:'af', status:'afStatus'},
+  {title:'Regulacja', f:[['finalSetpoint','Nastawa końcowa','num'],['al_adj_made','Wykonana regulacja','text'],['finalOffsetsCal1','Offsety – termometr 1','select'],['finalOffsetsCal2','Offsety – termometr 2','select'],['al_adjusted','Wyregulowano o','time']]},
+  {title:'As Left – czasy', f:[['al_cycle_start','Start cyklu','time'],['al_cycle_end','Koniec cyklu','time'],['al_stabilisation','Stabilizacja','read'],['al_cycletime','Czas cyklu','read']]},
+  {title:'As Left – wyświetlacz', f:[['al_cycle_air_max','Air – Max wyświetlacza','num'],['al_cycle_air_min','Air – Min wyświetlacza','num'],['al_cycle_air_avg','Air – średnia','read'],
+    ['al_cycle_load_max','Load – Max wyświetlacza','num'],['al_cycle_load_min','Load – Min wyświetlacza','num'],['al_cycle_load_avg','Load – średnia','read'],['al_chart_display','Chart – wyświetlacz','num']]},
+  {title:'As Left – odczyty Max', f:P.map(p=>['al_'+p+'_max','Max '+PL[p]+' (wzorzec)','num'])},
+  {title:'As Left – odczyty Min', f:P.map(p=>['al_'+p+'_min','Min '+PL[p]+' (wzorzec)','num'])},
+  {title:'As Left – wynik', special:'result', pre:'al', status:'alStatus'},
+  {title:'Certyfikat', special:'finish'}
+];
+
+/* ---------- worksheet access ---------- */
+const frame = document.getElementById('ws');
+let W = null, D = null;               // worksheet window / document
+const $ = id => document.getElementById(id);
+const wsEl = id => D && D.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function push(id, value){
+  const el = wsEl(id); if(!el) return;
+  el.value = value;
+  ['input','change'].forEach(t => el.dispatchEvent(new Event(t,{bubbles:true})));
+  el.dispatchEvent(new Event('blur'));
+}
+function recalc(){ try{ if(W && typeof W.calculateAll==='function') W.calculateAll(); }catch(e){ console.warn('calculateAll', e); } }
+
+/* ---------- state ---------- */
+let cur = 0;
+try{ cur = Math.min(STEPS.length-1, Math.max(0, parseInt(sessionStorage.getItem('lcm.step')||'0',10)||0)); }catch(e){}
+let kp = null;   // {id, buf, btn}
+
+/* ---------- rendering ---------- */
+function fieldHtml([id,label,type]){
+  const el = wsEl(id), tag = '<code>'+id+'</code>';
+  if(type==='time'){
+    const h = wsEl(id+'_h'), m = wsEl(id+'_m');
+    if(!h || !m) return missing(id,label);
+    const opts = s => Array.from(s.options).map(o=>`<option value="${esc(o.value)}"${o.value===s.value?' selected':''}>${esc(o.text)}</option>`).join('');
+    return `<div class="card"><div class="lbl">${esc(label)}${tag}</div><div class="timeRow">
+      <select class="big" data-id="${id}_h"${h.disabled?' disabled':''}>${opts(h)}</select><b>:</b>
+      <select class="big" data-id="${id}_m"${m.disabled?' disabled':''}>${opts(m)}</select></div></div>`;
+  }
+  if(!el) return missing(id,label);
+  if(type==='certmode'){
+    const btn = (m,t)=>`<button type="button" class="btn ${el.value&&el.value.toLowerCase().startsWith(m.slice(0,4))?'pri':'sec'}" style="flex:1" data-mode="${m}">${t}</button>`;
+    return `<div class="card"><div class="lbl">${esc(label)}${tag}</div><div style="display:flex;gap:8px">${btn('calibration','Kalibracja')}${btn('verification','Weryfikacja')}</div></div>`;
+  }
+  if(type==='read'){
+    const cls = el.classList.contains('bad')?' bad':el.classList.contains('ok')?' ok':'';
+    return `<div class="read${cls}"><span>${esc(label)}</span><b>${esc(el.value||'—')}</b></div>`;
+  }
+  if(type==='select'){
+    const opts = Array.from(el.options).map(o=>`<option value="${esc(o.value)}"${o.value===el.value?' selected':''}>${esc(o.text)}</option>`).join('');
+    return `<div class="card"><div class="lbl">${esc(label)}${tag}</div><select class="big" data-id="${id}"${el.disabled?' disabled':''}>${opts}</select></div>`;
+  }
+  if(type==='num'){
+    const v = el.value;
+    const off = el.disabled||el.readOnly;
+    const fmt = el.dataset.decimals ? ` <span style="font-weight:400">(${esc(el.placeholder||'')})</span>` : '';
+    return `<div class="card"><div class="lbl"><span>${esc(label)}${fmt}</span>${tag}</div><button type="button" class="numfield${v?'':' empty'}" data-num="${id}"${off?' disabled':''}>${esc(v||el.placeholder||'—')}</button>${off?'<span class="hint">Zablokowane przez arkusz – najpierw wczytaj offsety / wybierz sondę albo pole nie dotyczy tego urządzenia.</span>':''}</div>`;
+  }
+  return `<div class="card"><div class="lbl">${esc(label)}${tag}</div><input class="big" data-id="${id}" value="${esc(el.value)}"${(el.disabled||el.readOnly)?' disabled':''} autocomplete="off"></div>`;
+}
+function missing(id,label){ return `<div class="card"><div class="lbl">${esc(label)}<code>${id}</code></div><span class="hint">Tego pola nie ma w arkuszu – pomijam.</span></div>`; }
+
+function skipProbeOverlay(){
+  // the worksheet's own "Before you start: probes" screen opens inside the hidden
+  // sheet once a serial is known; the phone has its own probes step (krok 4)
+  try{ const sk = D && D.getElementById('psSkip'); if(sk && sk.offsetParent) sk.click(); }catch(e){}
+}
+function render(){
+  closeKeypad(false);
+  skipProbeOverlay();
+  const s = STEPS[cur];
+  try{ sessionStorage.setItem('lcm.step', String(cur)); }catch(e){}
+  $('stepNo').textContent = `Krok ${cur+1} z ${STEPS.length}`;
+  $('stepTitle').textContent = s.title;
+  $('prog').innerHTML = STEPS.map((_,i)=>`<i class="${i<cur?'done':i===cur?'cur':''}"></i>`).join('');
+  $('prevBtn').disabled = cur===0;
+  $('nextBtn').textContent = cur===STEPS.length-1 ? 'Gotowe' : 'Dalej';
+  let html = '';
+  if(s.special==='start') html = startHtml();
+  else if(s.special==='result') html = resultHtml(s);
+  else if(s.special==='finish') html = finishHtml();
+  else html = s.f.map(fieldHtml).join('');
+  $('screen').innerHTML = html;
+  $('screen').scrollTop = 0;
+  bindScreen();
+}
+
+function startHtml(){
+  const probe = wsEl('af_air1_probe');
+  const hasOffsets = probe && Array.from(probe.options).filter(o=>o.value).length>0;
+  const serial = (wsEl('serial')||{}).value || '';
+  return `
+  <div class="card"><b style="font-size:17px">Wersja testowa – tylko arkusz SMD</b>
+    <span class="hint">Ta strona używa prawdziwego arkusza SMD w tle: on liczy wyniki i robi PDF. Nie wystawiaj z niej prawdziwych certyfikatów – to tylko sprawdzenie, czy kalibracja na telefonie jest wygodna i czy wszystko działa.</span></div>
+  <div class="card"><div class="lbl">Plik offsetów sond</div>
+    <div class="status ${hasOffsets?'ok':'bad'}">${hasOffsets?'Offsety wczytane – sondy dostępne':'Brak offsetów – wczytaj plik .json'}</div>
+    <button class="btn sec" id="loadOff">Wczytaj plik offsetów (.json)</button></div>
+  <div class="card"><div class="lbl">Job sheet (opcjonalnie)</div>
+    <span class="hint">Wczytuje dane zlecenia tym samym czytnikiem co LabCal.${serial?' Obecny nr seryjny w arkuszu: <b>'+esc(serial)+'</b>':''}</span>
+    <button class="btn sec" id="loadJob">Wczytaj job sheet (PDF)</button></div>
+  <div class="card"><span class="hint">Wpisane wartości zapisują się w arkuszu automatycznie. Przycisk ▦ u góry pokazuje cały arkusz – przydaje się do sprawdzenia, że wszystko trafiło na swoje miejsce.</span></div>`;
+}
+
+function resultHtml(s){
+  recalc();
+  const st = wsEl(s.status);
+  const cls = st ? (st.classList.contains('bad')?'bad':st.classList.contains('ok')?'ok':'') : '';
+  const rows = ['air','load','chart'].map(k=>{
+    const d = wsEl(s.pre+'_'+k+'_diff'), a = wsEl(s.pre+'_'+k+'_avg');
+    if(!d) return '';
+    const c = d.classList.contains('bad')?' bad':d.classList.contains('ok')?' ok':'';
+    return `<div class="read${c}"><span>${k==='air'?'Air':k==='load'?'Load':'Chart'} – średnia ${esc(a&&a.value||'—')}</span><b>różnica ${esc(d.value||'—')}</b></div>`;
+  }).join('');
+  return `<div class="status ${cls}">${esc(st?st.textContent:'Brak paska statusu w arkuszu')}</div>
+    <div class="card"><div class="lbl">Wyniki z arkusza</div>${rows}</div>
+    <span class="hint">Wynik liczy arkusz SMD – ta strona niczego nie przelicza sama.</span>`;
+}
+
+function finishHtml(){
+  recalc();
+  const v = id => esc((wsEl(id)||{}).value||'—');
+  const af = wsEl('afStatus'), al = wsEl('alStatus');
+  const c = e => e ? (e.classList.contains('bad')?'bad':e.classList.contains('ok')?'ok':'') : '';
+  return `
+  <div class="card"><div class="lbl">Urządzenie</div><b style="font-size:18px">${v('model')} · S/N ${v('serial')}</b><span class="hint">${v('site')} – ${v('department')}</span></div>
+  <div class="status ${c(af)}">${esc(af?af.textContent:'')}</div>
+  <div class="status ${c(al)}">${esc(al?al.textContent:'')}</div>
+  <div class="card"><div class="lbl">Sprawdzający (opcjonalnie)<code>checker</code></div><input class="big" data-id="checker" value="${v('checker')==='—'?'':v('checker')}"></div>
+  <button class="btn pri" id="genPdf">Generuj certyfikat PDF</button>
+  <span class="hint">Używa przycisku „Generate PDF” z arkusza – te same sprawdzenia, ten sam numer certyfikatu i ten sam PDF co na iPadzie. Jeśli udostępnianie nie otworzy się z tego przycisku, otwórz cały arkusz (▦) i naciśnij „Generate PDF” bezpośrednio w nim – to też jest część testu.</span>
+  <button class="btn sec" id="openSheet2">Otwórz cały arkusz</button>`;
+}
+
+/* ---------- events ---------- */
+function bindScreen(){
+  document.querySelectorAll('#screen [data-id]').forEach(el=>{
+    el.addEventListener('change', ()=>{ push(el.dataset.id, el.value); setTimeout(skipProbeOverlay, 200); refreshReads(); });
+  });
+  document.querySelectorAll('#screen [data-mode]').forEach(b=>b.addEventListener('click', ()=>{
+    const wb = D.querySelector('#certModeBox button[data-mode="'+b.dataset.mode+'"]'); if(wb) wb.click();
+    setTimeout(render, 150);
+  }));
+  document.querySelectorAll('#screen [data-num]').forEach(btn=>{
+    btn.addEventListener('click', ()=>openKeypad(btn));
+  });
+  const lo=$('loadOff'); if(lo) lo.onclick=()=>$('offFile').click();
+  const lj=$('loadJob'); if(lj) lj.onclick=()=>$('jobFile').click();
+  const gp=$('genPdf'); if(gp) gp.onclick=generate;
+  const os=$('openSheet2'); if(os) os.onclick=showSheet;
+}
+function refreshNums(){
+  // the worksheet may fill other fields itself (e.g. Chart copied from Load when they share a probe)
+  setTimeout(()=>document.querySelectorAll('#screen [data-num]').forEach(b=>{
+    if(kp && kp.btn===b) return;
+    const e = wsEl(b.dataset.num); if(!e) return;
+    b.textContent = e.value || e.placeholder || '—'; b.classList.toggle('empty', !e.value);
+    b.disabled = e.disabled || e.readOnly;
+  }), 80);
+}
+function refreshReads(){
+  // re-draw only the read-only result rows of the current step, keep focus elsewhere
+  const s = STEPS[cur]; if(!s.f) return;
+  const reads = s.f.filter(f=>f[2]==='read');
+  if(!reads.length) return;
+  setTimeout(()=>{ const html = s.f.map(fieldHtml); const nodes = $('screen').children;
+    s.f.forEach((f,i)=>{ if(f[2]==='read' && nodes[i]){ const t=document.createElement('div'); t.innerHTML=html[i]; nodes[i].replaceWith(t.firstElementChild); } });
+  }, 60);
+}
+
+/* ---------- keypad ---------- */
+function openKeypad(btn){
+  if(kp) commitKeypad();
+  const el = wsEl(btn.dataset.num);
+  kp = {id:btn.dataset.num, buf:(el&&el.value)||'', btn, fresh:true};   // first key replaces an existing value
+  document.querySelectorAll('.numfield.active').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  $('keypad').classList.add('on'); $('footer').style.display='none';
+  showBuf();
+  btn.scrollIntoView({block:'center',behavior:'smooth'});
+}
+function showBuf(){ if(!kp) return; kp.btn.textContent = kp.buf || '—'; kp.btn.classList.toggle('empty', !kp.buf); }
+function commitKeypad(){
+  if(!kp) return;
+  let v = kp.buf; if(v==='-'||v==='.'||v==='-.') v='';
+  push(kp.id, v);
+  const el = wsEl(kp.id); if(el){ kp.btn.textContent = el.value || '—'; kp.btn.classList.toggle('empty', !el.value); }
+  kp.btn.classList.remove('active');
+  kp = null; refreshNums(); refreshReads();
+}
+function closeKeypad(commit){ if(commit) commitKeypad(); else if(kp){ kp.btn.classList.remove('active'); kp=null; } $('keypad').classList.remove('on'); $('footer').style.display=''; }
+$('keypad').addEventListener('click', e=>{
+  const k = e.target.closest('button'); if(!k || !kp) return;
+  const key = k.dataset.k;
+  if(key==='ok'){
+    const all = Array.from(document.querySelectorAll('#screen [data-num]:not(:disabled)'));
+    const i = all.indexOf(kp.btn); commitKeypad();
+    if(all[i+1]) openKeypad(all[i+1]); else closeKeypad(false);
+    return;
+  }
+  if(kp.fresh && key!=='back'){ kp.fresh=false; if(key!=='minus') kp.buf=''; }
+  kp.fresh = false;
+  if(key==='back') kp.buf = kp.buf.slice(0,-1);
+  else if(key==='clear') kp.buf = '';
+  else if(key==='minus') kp.buf = kp.buf.startsWith('-') ? kp.buf.slice(1) : '-'+kp.buf;
+  else if(key==='.'){ if(!kp.buf.includes('.')) kp.buf += (kp.buf===''||kp.buf==='-') ? '0.' : '.'; }
+  else if(kp.buf.replace(/[-.]/g,'').length < 7) kp.buf += key;
+  showBuf();
+});
+
+/* ---------- navigation ---------- */
+$('prevBtn').onclick = ()=>{ closeKeypad(true); if(cur>0){ cur--; render(); } };
+$('nextBtn').onclick = ()=>{ closeKeypad(true); if(cur<STEPS.length-1){ cur++; render(); } };
+$('menuBtn').onclick = ()=>{
+  closeKeypad(true);
+  $('menuPanel').innerHTML = '<b style="font-size:17px;padding:4px 4px 8px">Kroki</b>' +
+    STEPS.map((s,i)=>`<button class="step${i===cur?' cur':''}" data-go="${i}">${i+1}. ${esc(s.title)}</button>`).join('');
+  $('menu').classList.add('on');
+};
+$('menu').addEventListener('click', e=>{
+  const b = e.target.closest('[data-go]');
+  if(b){ cur = +b.dataset.go; render(); }
+  $('menu').classList.remove('on');
+});
+
+/* ---------- full worksheet view ---------- */
+function showSheet(){ closeKeypad(true); $('sheetWrap').classList.add('show'); }
+$('sheetBtn').onclick = showSheet;
+$('sheetClose').onclick = ()=>{ $('sheetWrap').classList.remove('show'); render(); };
+
+/* ---------- files handed to the worksheet's own loaders ---------- */
+$('offFile').addEventListener('change', async e=>{
+  const f = e.target.files[0]; e.target.value=''; if(!f || !W) return;
+  try{ await W.loadOffsetsFile({target:{files:[f], value:''}}); }catch(err){ alert('Błąd wczytywania offsetów: '+(err&&err.message||err)); }
+  setTimeout(render, 300);
+});
+$('jobFile').addEventListener('change', async e=>{
+  const f = e.target.files[0]; e.target.value=''; if(!f || !W) return;
+  try{ await W.loadJobsheetPDF({target:{files:[f], value:''}}); }catch(err){ alert('Błąd wczytywania job sheetu: '+(err&&err.message||err)); }
+  setTimeout(render, 500);
+});
+
+/* ---------- certificate ---------- */
+async function generate(){
+  if(!W || typeof W.generatePDF!=='function'){ alert('Arkusz nie ma funkcji generatePDF.'); return; }
+  // The worksheet shows its own "missing fields" list, but inside the hidden
+  // sheet nobody would see it — so list the same required fields here first.
+  recalc();
+  const missingIds = (typeof W.collectRequiredIds==='function')
+    ? W.collectRequiredIds().filter(id=>{ const e=wsEl(id); return e && String(e.value||'').trim()==='' && !e.disabled; }) : [];
+  // readings must have exactly the decimals the worksheet asks for (xx.xxx etc.)
+  const badDec = (typeof W.decimalOK==='function')
+    ? Array.from(D.querySelectorAll('[data-decimals]')).filter(e=>!e.disabled && !e.readOnly && !W.decimalOK(e)).map(e=>e.id) : [];
+  const problems = Array.from(new Set(missingIds.concat(badDec)));
+  if(problems.length){ showMissing(problems); return; }
+  const b = $('genPdf'); b.disabled = true; b.textContent = 'Tworzę PDF…';
+  try{ await W.generatePDF(); }
+  catch(err){ alert('Generowanie PDF nie powiodło się: '+(err&&err.message||err)); }
+  finally{ b.disabled = false; b.textContent = 'Generuj certyfikat PDF'; }
+}
+
+function stepOf(id){
+  const base = id.replace(/_(h|m)$/,'');
+  for(let i=0;i<STEPS.length;i++){ const f=STEPS[i].f; if(f && f.some(x=>x[0]===id||x[0]===base)) return i; }
+  return -1;
+}
+function showMissing(ids){
+  const rows = ids.map(id=>{
+    const i = stepOf(id); const f = i>=0 ? STEPS[i].f.find(x=>x[0]===id||x[0]===id.replace(/_(h|m)$/,'')) : null;
+    const label = f ? f[1] : id;
+    return i>=0 ? `<button class="btn sec" style="justify-content:space-between" data-jump="${i}"><span>${esc(label)}</span><span style="font-size:13px">krok ${i+1} →</span></button>`
+                : `<div class="read"><span>${esc(id)}</span><b>tylko w arkuszu ▦</b></div>`;
+  }).join('');
+  $('screen').insertAdjacentHTML('afterbegin', `<div class="card" id="missBox" style="border:2px solid var(--bad)"><b style="color:var(--bad)">Do poprawienia: ${ids.length} ${ids.length===1?'pole':'pól'}</b><span class="hint">Puste albo z inną liczbą miejsc po przecinku niż wymaga arkusz (np. xx.xxx) – te same zasady co na iPadzie.</span>${rows}</div>`);
+  $('screen').scrollTop = 0;
+  document.querySelectorAll('[data-jump]').forEach(b=>b.onclick=()=>{ cur=+b.dataset.jump; render(); });
+}
+
+/* ---------- start-up ---------- */
+frame.addEventListener('load', ()=>{
+  try{ W = frame.contentWindow; D = frame.contentDocument; }catch(e){ W=D=null; }
+  if(!D || !D.getElementById('serial')){
+    $('loadMsg').textContent = 'Nie udało się otworzyć arkusza SMD w tle. Sprawdź, czy mobile.html leży w tym samym folderze co calibration_worksheet_SMD.html.';
+    return;
+  }
+  // give the worksheet time to restore its own autosave and offsets
+  setTimeout(()=>{
+    $('loading').classList.add('hide'); render();
+  }, 900);
+});
+setTimeout(()=>{ if(!D) $('loadMsg').textContent = 'Arkusz ładuje się długo… (bez internetu część bibliotek może się nie wczytać)'; }, 8000);
+</script>
+</body>
+</html>
