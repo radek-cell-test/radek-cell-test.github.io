@@ -1,0 +1,10 @@
+/* Dancing Script 600 (latin) — served from this site so the signature face
+   works with no signal. Replaces the Google Fonts stylesheet (v1.542).
+   Dancing Script is licensed under the SIL Open Font License 1.1. */
+@font-face{
+  font-family:'Dancing Script';
+  font-style:normal;
+  font-weight:600;
+  font-display:swap;
+  src:url('dancing-script-latin-600-normal.woff2') format('woff2');
+}
