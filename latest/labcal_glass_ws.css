@@ -1,0 +1,71 @@
+/* LabCal v1.611 — Labcold blue + "liquid glass" for the WORKSHEET pages.
+   ---------------------------------------------------------------------------
+   Touches ONLY what sits around the sheet: the page background behind it, the
+   toolbar above it (Back / Home / Save / PDF / More…) and the More… menu.
+   Nothing inside .page / #page is styled here, so the worksheet itself and
+   every certificate PDF (which is a picture of #page) come out exactly as in
+   v1.610. Screen only — printing is unchanged.
+
+   "html body" in front of the selectors is deliberate: labcal_nav.js adds its
+   own toolbar CSS after the page has loaded, and this has to win over it. */
+
+@media screen{
+  html body{
+    background:
+      radial-gradient(1100px 600px at 8% -10%, rgba(0,163,224,.20), transparent 60%),
+      radial-gradient(900px 600px at 105% 10%, rgba(0,129,200,.16), transparent 60%),
+      linear-gradient(180deg,#F3F8FC 0%,#E3EDF5 100%);
+    background-attachment:fixed;
+  }
+
+  /* toolbar: frosted glass strip, rounded underneath */
+  html body .toolbar{
+    background:rgba(240,247,252,.72);
+    -webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);
+    border:1px solid rgba(255,255,255,.75);border-top:0;border-radius:0 0 18px 18px;
+    box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 8px 26px rgba(0,60,110,.12);
+    padding-left:calc(10px + env(safe-area-inset-left,0px));padding-right:calc(10px + env(safe-area-inset-right,0px));
+  }
+
+  /* buttons: white glass pills; main actions in Labcold blue */
+  html body .toolbar .btn{
+    border-radius:999px;border:1px solid #0070B2;color:#fff;
+    background:#0081C8;background-image:linear-gradient(180deg,rgba(255,255,255,.20),rgba(255,255,255,0));
+    box-shadow:0 1px 0 rgba(255,255,255,.40) inset,0 3px 10px rgba(0,129,200,.25);
+  }
+  html body .toolbar .btn:hover{background-color:#006BA6}
+  html body .toolbar .btn.light,
+  html body .toolbar .btn.lcNavBtn{
+    background:rgba(255,255,255,.88);color:#10293A;border-color:rgba(16,41,58,.16);
+    box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 1px 3px rgba(0,50,90,.10);
+  }
+  html body .toolbar .btn.light:hover,
+  html body .toolbar .btn.lcNavBtn:hover{background:#fff}
+  html body .toolbar .btn.danger{background:#b00000;background-image:none;border-color:#b00000;color:#fff}
+  html body .toolbar .btn.add{background:#207a20;background-image:none;border-color:#207a20;color:#fff}
+  html body .toolbar .btn:disabled{box-shadow:none}
+  html body #moreToolsBtn[aria-expanded="true"]{background:#006BA6;color:#fff;border-color:#006BA6}
+  html body .toolbar .hintText{color:#4F6576}
+  html body #lcJobLine{color:#0E3550}
+
+  /* More… menu */
+  html body #moreTools.lcMenu{
+    background:rgba(255,255,255,.90);
+    -webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);
+    border:1px solid rgba(255,255,255,.8);border-radius:16px;
+    box-shadow:0 1px 0 #fff inset,0 0 0 1px rgba(16,41,58,.08),0 18px 44px rgba(0,40,80,.25);
+  }
+  html body #moreTools.lcMenu .btn{background:transparent;background-image:none;color:#10293A;border:0;box-shadow:none;border-radius:10px}
+  html body #moreTools.lcMenu .btn:hover,
+  html body #moreTools.lcMenu .btn:active{background:rgba(0,129,200,.10)}
+  html body #moreTools.lcMenu .lcm-danger .btn{color:#a3261b}
+
+  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+    html body .toolbar{background:#EEF5FA}
+    html body #moreTools.lcMenu{background:#fff}
+  }
+  @media (prefers-reduced-transparency:reduce){
+    html body .toolbar{background:#EEF5FA;-webkit-backdrop-filter:none;backdrop-filter:none}
+    html body #moreTools.lcMenu{background:#fff;-webkit-backdrop-filter:none;backdrop-filter:none}
+  }
+}
