@@ -3,7 +3,7 @@
 // Bump CACHE_VERSION any time the HTML/JS files change and you want
 // devices that already installed the app to pick up the new version.
 // ---------------------------------------------------------------------
-const CACHE_VERSION  = 'v178';
+const CACHE_VERSION  = 'v179';
 // v1.553: cache names carry the folder this worker serves (e.g. /1.553/), so
 // two LabCal versions on the same site (the test site keeps one folder per
 // version) can no longer delete each other's offline copy.

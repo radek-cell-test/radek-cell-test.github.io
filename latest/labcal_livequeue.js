@@ -1,4 +1,4 @@
-(window.LabCalBuild = window.LabCalBuild || {})['labcal_livequeue.js'] = 'v1.634';  // file version — see labcal_build.js
+(window.LabCalBuild = window.LabCalBuild || {})['labcal_livequeue.js'] = 'v1.635';  // file version — see labcal_build.js
 /* ---------------------------------------------------------------------
    LabCal — times sent from Live probes to a worksheet (v1.625)
    ---------------------------------------------------------------------

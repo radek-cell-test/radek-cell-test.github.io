@@ -1,4 +1,4 @@
-(window.LabCalBuild = window.LabCalBuild || {})['labcal_errlog.js'] = 'v1.634';  // file version — see labcal_build.js
+(window.LabCalBuild = window.LabCalBuild || {})['labcal_errlog.js'] = 'v1.635';  // file version — see labcal_build.js
 /* ---------------------------------------------------------------------
    LabCal — on-device error log + on-page notices (v1.576)
    ---------------------------------------------------------------------

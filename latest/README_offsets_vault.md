@@ -3,6 +3,15 @@
 Load each offsets file **once, on the home page**. Every worksheet then picks it
 up automatically until the reference thermometer's certificate expires.
 
+## v1.635 — Unit list beside the worksheet: full serial, location, probes and since when
+
+Radek (20 Nov 2026). The unit ▾ panel on a worksheet: each unit now has two lines —
+the FULL serial (it wraps, no "…") with model · worksheet, then location · status.
+Status = the As Found probes in that unit and the time they went in ("1A 6B in at
+08:40"), plus the stage from the timeline, same words as Live probes ("Stabilising ·
+11 min left"). A done unit shows its certificate number. Read only; tapping a unit
+works as before. (labcal_nav.js)
+
 ## v1.634 — Hold − / + for the loading time; no "entered … OK" lines; More… hidden on worksheets
 
 Radek (20 Nov 2026).

@@ -1,4 +1,4 @@
-(window.LabCalBuild = window.LabCalBuild || {})['labcal_certno.js'] = 'v1.634';  // file version — see labcal_build.js
+(window.LabCalBuild = window.LabCalBuild || {})['labcal_certno.js'] = 'v1.635';  // file version — see labcal_build.js
 /* ---------------------------------------------------------------------
    LabCal — certificate numbers given automatically (v1.612)
    ---------------------------------------------------------------------

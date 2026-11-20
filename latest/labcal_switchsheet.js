@@ -1,4 +1,4 @@
-(window.LabCalBuild = window.LabCalBuild || {})['labcal_switchsheet.js'] = 'v1.634';  // file version — see labcal_build.js
+(window.LabCalBuild = window.LabCalBuild || {})['labcal_switchsheet.js'] = 'v1.635';  // file version — see labcal_build.js
 /* ---------------------------------------------------------------------
    LabCal — "Change worksheet" (v1.631, Radek 17 Nov 2026)
    ---------------------------------------------------------------------

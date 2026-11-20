@@ -1,4 +1,4 @@
-(window.LabCalBuild = window.LabCalBuild || {})['labcal_probestart.js'] = 'v1.634';  // file version — see labcal_build.js
+(window.LabCalBuild = window.LabCalBuild || {})['labcal_probestart.js'] = 'v1.635';  // file version — see labcal_build.js
 // ============================================================================
 // LabCal v1.628 (Radek, 9 Nov 2026) — "Probes & loading time" start panel.
 //
