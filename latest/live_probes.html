@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta name="labcal-build" content="v1.633">
+<meta name="labcal-build" content="v1.634">
 <script src="labcal_build.js"></script>
 <script src="labcal_errlog.js"></script>
 <script src="labcal_shell.js"></script>  <!-- v1.619: side menu -->
@@ -458,8 +458,12 @@ body{background:#F4F6F9;color:var(--ink);font-family:var(--sans);-webkit-font-sm
         '<button type="button" data-qx="' + esc(it.id) + '" data-qjob="' + k + '">Withdraw</button></div>';
     });
     var cut = Date.now() - 30 * 60000;
-    Q.results(job, serial).filter(function (x) { return x.at > cut; }).slice(-2).forEach(function (x) {
-      var cls = !x.ok ? 'bad' : /the worksheet says/.test(x.msg) ? 'bad' : 'ok';
+    // v1.634 (Radek, 20 Nov 2026): a time or probes the worksheet took are
+    // already shown on the card (Probes chips, the bar), so a green "entered"
+    // line with an OK to tap is gone. Only something NOT entered (or that the
+    // worksheet questions) is shown, and that one keeps its OK.
+    Q.results(job, serial).filter(function (x) { return x.at > cut && (!x.ok || /the worksheet says/.test(x.msg)); }).slice(-2).forEach(function (x) {
+      var cls = 'bad';
       html += '<div class="lp-q ' + cls + '">' + (x.ok ? '✓ ' : '✕ ') + esc(x.msg) +
         '<button type="button" data-rx="' + esc(x.id) + '" data-qjob="' + k + '" aria-label="Close">OK</button></div>';
     });

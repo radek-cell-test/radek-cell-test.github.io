@@ -1,4 +1,4 @@
-(window.LabCalBuild = window.LabCalBuild || {})['labcal_nav.js'] = 'v1.633';  // file version — see labcal_build.js
+(window.LabCalBuild = window.LabCalBuild || {})['labcal_nav.js'] = 'v1.634';  // file version — see labcal_build.js
 /* ---------------------------------------------------------------------
    LabCal — Back / Home on the worksheet toolbar (v1.563)
    ---------------------------------------------------------------------
@@ -823,6 +823,23 @@
     if (b) b.setAttribute('aria-expanded', open ? 'true' : 'false');
     if (open) placeMenu();
   }
+  // v1.634 (Radek, 20 Nov 2026): the worksheet's More… list was for testing
+  // and is not used on site any more. On the calibration worksheets (the ones
+  // with Change worksheet…) More… is hidden and only Change worksheet… stays,
+  // as its own button. Nothing is removed: Settings → Worksheet menu → "Show
+  // the full More… menu" brings the old list back on this iPad.
+  var FULL_MORE_KEY = 'labcal.ui.fullMore';
+  function slimMore(m, b) {
+    var full = false;
+    try { full = global.localStorage.getItem(FULL_MORE_KEY) === '1'; } catch (e) {}
+    var cs = doc.getElementById('changeSheetBtn');
+    if (full || !cs || !b.parentNode) return;
+    setMenu(false);
+    cs.classList.add('lcChangeSheet');
+    b.parentNode.insertBefore(cs, b);   // moved — its onclick stays
+    b.style.display = 'none';
+    b.setAttribute('aria-hidden', 'true');
+  }
   function installMoreMenu() {
     var m = doc.getElementById('moreTools'), b = doc.getElementById('moreToolsBtn');
     if (!m || !b || m.classList.contains('lcMenu')) return;
@@ -848,6 +865,7 @@
     try { global.localStorage.setItem('labcal.ui.moreTools', '0'); } catch (e) {}
     if (b.textContent !== 'More…') b.textContent = 'More…';
     setMenu(false);
+    slimMore(m, b);
     // The pages' onclick="toggleMoreTools()" now opens / closes the list.
     global.toggleMoreTools = function () { setMenu(!menuOpen()); };
     // choosing an item, tapping elsewhere or Escape closes it

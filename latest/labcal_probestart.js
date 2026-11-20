@@ -1,4 +1,4 @@
-(window.LabCalBuild = window.LabCalBuild || {})['labcal_probestart.js'] = 'v1.633';  // file version — see labcal_build.js
+(window.LabCalBuild = window.LabCalBuild || {})['labcal_probestart.js'] = 'v1.634';  // file version — see labcal_build.js
 // ============================================================================
 // LabCal v1.628 (Radek, 9 Nov 2026) — "Probes & loading time" start panel.
 //
@@ -170,7 +170,7 @@
       '.psP.lock{background:#E6EAEE;border:1px dashed #A7B2BD;color:#56616D;cursor:not-allowed}' +
       '.psP.booked:not(.sel){border-color:#D97706}.psP.booked:not(.sel) small{color:#8A4B00}' +
       '.psTime{display:flex;align-items:center;gap:14px}.psTime output{font-size:60px;font-weight:700;color:#0067A3;font-variant-numeric:tabular-nums;min-width:170px;text-align:center}' +
-      '.psSq{width:56px;height:56px;border-radius:14px;border:1px solid #B9CCDC;background:#fff;font-size:26px;color:#10263A;touch-action:manipulation}.psSq:disabled{opacity:.35}' +
+      '.psSq{width:56px;height:56px;border-radius:14px;border:1px solid #B9CCDC;background:#fff;font-size:26px;color:#10263A;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}.psSq:active{background:#E3F1FB}.psSq:disabled{opacity:.35}' +
       '.psQuick{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}' +
       '.psQ{height:50px;border-radius:14px;border:1px solid #B9CCDC;background:#fff;font-size:16px;color:#10263A;touch-action:manipulation}.psQ.on{border:2px solid #0081C8;background:#E3F1FA;color:#004E7C;font-weight:600}' +
       '.psStrip{display:flex;flex-direction:column;gap:5px}.psAxis,.psLane{position:relative;margin-left:70px}.psAxis{height:16px;font-size:11px;color:#4A5A6A}' +
@@ -206,11 +206,13 @@
     o.setAttribute('aria-modal', 'true');
     o.setAttribute('aria-label', 'Probes and loading time');
     o.addEventListener('click', onClick);
+    o.addEventListener('pointerdown', onStepDown);   // v1.634: hold − / + to run the minutes
     document.body.appendChild(o);
     render();
     return true;
   }
   function close() {
+    clearStep();
     st = null;
     var o = $('psOverlay'); if (o) o.remove();
   }
@@ -322,10 +324,67 @@
       else { st.pick[col] = st.pick[col] === p ? '' : p; if (col === 'load') st.noneLoad = false; }
       st.say = ''; render(); return;
     }
-    if (b.dataset.step) { st.now = nowAbs(); st.abs = Math.min(st.now, st.abs + Number(b.dataset.step)); render(); return; }
+    if (b.dataset.step) {
+      if (stepClickIgnored()) return;   // v1.634: already stepped by the press itself
+      st.now = nowAbs(); st.abs = Math.min(st.now, st.abs + Number(b.dataset.step)); render(); return;
+    }
     if (b.dataset.back !== undefined) { st.now = nowAbs(); st.abs = st.now - Number(b.dataset.back); render(); return; }
     if (b.id === 'psSkip') { setSkipped(st.job, st.serial); close(); return; }
     if (b.id === 'psGo') save();
+  }
+
+  // v1.634 (Radek, 20 Nov 2026): press and hold − / + and the minutes keep
+  // going, faster the longer it is held. One minute on the press itself, then
+  // repeats after ~0.45 s. + stops at "now". The click that follows the
+  // release is ignored (the press already stepped). Keyboard still uses click.
+  var stepT = 0, stepN = 0, pressing = false, swallow = false, swallowT = 0;
+  function oneStep(d) {
+    if (!st) return false;
+    st.now = nowAbs();
+    var was = st.abs;
+    st.abs = Math.min(st.now, st.abs + d);
+    // only the clock and the + button change while the finger is down: the
+    // buttons are not rebuilt under the finger (Safari would lose the release)
+    var c = $('psClock'); if (c) c.textContent = hh(st.abs);
+    var plus = document.querySelector('#psOverlay .psSq[data-step="1"]'); if (plus) plus.disabled = st.abs >= st.now;
+    return st.abs !== was;
+  }
+  function onStepDown(e) {
+    var b = e.target && e.target.closest && e.target.closest('button.psSq');
+    if (!b || b.disabled || !st) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.preventDefault();
+    clearStep();
+    var d = Number(b.dataset.step);
+    pressing = true; stepN = 0;
+    oneStep(d);
+    document.addEventListener('pointerup', onStepUp, true);
+    document.addEventListener('pointercancel', onStepUp, true);
+    stepT = global.setTimeout(function rep() {
+      stepT = 0;
+      if (!pressing || !oneStep(d)) return;
+      stepN++;
+      stepT = global.setTimeout(rep, stepN < 8 ? 140 : stepN < 25 ? 70 : 35);
+    }, 450);
+  }
+  function onStepUp() {
+    if (!pressing) return;
+    clearStep();
+    swallow = true;   // the click that follows this release
+    if (swallowT) global.clearTimeout(swallowT);
+    swallowT = global.setTimeout(function () { swallow = false; swallowT = 0; }, 800);
+    if (st && $('psOverlay')) render();   // quick buttons, Save text
+  }
+  function clearStep() {
+    pressing = false;
+    if (stepT) { global.clearTimeout(stepT); stepT = 0; }
+    document.removeEventListener('pointerup', onStepUp, true);
+    document.removeEventListener('pointercancel', onStepUp, true);
+  }
+  function stepClickIgnored() {
+    if (pressing) return true;
+    if (swallow) { swallow = false; return true; }
+    return false;
   }
 
   function save() {

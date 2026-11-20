@@ -1,4 +1,4 @@
-(window.LabCalBuild = window.LabCalBuild || {})['labcal_schedule.js'] = 'v1.633';  // file version — see labcal_build.js
+(window.LabCalBuild = window.LabCalBuild || {})['labcal_schedule.js'] = 'v1.634';  // file version — see labcal_build.js
 /* ==========================================================================
    LabCal — thermometer & probe timeline (v1.595, stage 1)
    --------------------------------------------------------------------------

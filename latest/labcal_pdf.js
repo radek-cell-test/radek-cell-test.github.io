@@ -1,4 +1,4 @@
-(window.LabCalBuild = window.LabCalBuild || {})['labcal_pdf.js'] = 'v1.633';  // file version — see labcal_build.js
+(window.LabCalBuild = window.LabCalBuild || {})['labcal_pdf.js'] = 'v1.634';  // file version — see labcal_build.js
 /* ---------------------------------------------------------------------
    LabCal — certificate PDF render settings
    ---------------------------------------------------------------------

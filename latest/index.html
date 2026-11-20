@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta name="labcal-build" content="v1.633">
+<meta name="labcal-build" content="v1.634">
 <script src="labcal_build.js"></script>
 <script src="labcal_errlog.js"></script>
 <script src="labcal_shell.js"></script>  <!-- v1.619: side menu -->
@@ -555,6 +555,7 @@ footer{
       <button type="button" data-go="grpEngineer"><svg class="lcs-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Engineer &amp; PIN</button>
       <button type="button" data-go="grpOffline"><svg class="lcs-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.4 8.3 8 9 4.6-.7 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>Offline copy</button>
       <button type="button" data-go="grpBackup"><svg class="lcs-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>Backup &amp; certificates</button>
+      <button type="button" data-go="grpWsMenu"><svg class="lcs-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Worksheet menu</button>
     </nav>
     <div class="drawergroup" id="grpOffsets">
       <div class="section-label">Reference thermometer offsets</div>
@@ -583,6 +584,16 @@ footer{
       <div class="backup" id="backupPanel"></div>
       <div class="pdfq" id="pdfQualityPanel"></div>
     </div>
+    <!-- v1.634: the worksheet's old More… list is hidden; this brings it back on this iPad -->
+    <div class="drawergroup" id="grpWsMenu">
+      <div class="section-label">Worksheet menu</div>
+      <div class="lcs-card" style="padding:14px 16px">
+        <label style="display:flex;align-items:center;gap:12px;min-height:44px;cursor:pointer">
+          <input type="checkbox" id="fullMoreChk" style="width:22px;height:22px;flex:none">
+          <span><b>Show the full More… menu on worksheets</b><br><span style="font-size:13px;color:#56616D">Off (normal): only <i>Change worksheet…</i> is shown. On: Load saved, Excel, Print, Load offsets, Load Jobsheet PDF and Start New Calibration come back — for testing or if something goes wrong on site.</span></span>
+        </label>
+      </div>
+    </div>
   </div>
   <input id="todayJobFile" type="file" accept="application/pdf,.pdf" style="display:none">  <!-- v1.624: Load new job for today -->
   <input id="restoreFile" type="file" accept="application/json,.json" style="display:none">
@@ -590,7 +601,7 @@ footer{
 
   <footer>
     <span>LabCal Calibration Suite · offline worksheet toolkit</span>
-    <span id="footYear">v1.633</span>
+    <span id="footYear">v1.634</span>
   </footer>
 
 </div>
@@ -791,7 +802,7 @@ function renderDate(){
   const d = new Date();
   const opts = {day:'2-digit', month:'short', year:'numeric'};
   document.getElementById('todayDate').textContent = d.toLocaleDateString('en-GB', opts).toUpperCase();
-  document.getElementById('footYear').textContent = 'v1.633 · ' + d.getFullYear();
+  document.getElementById('footYear').textContent = 'v1.634 · ' + d.getFullYear();
 }
 
 // ---- Fullscreen toggle (Android/desktop browsers; on iOS, use
@@ -1630,7 +1641,7 @@ function renderPdfQuality(){
 // which is right — but it also means a file that never got uploaded fails
 // silently. Say so plainly instead.
 // ---------------------------------------------------------------------
-const APP_VERSION = 'v1.633';
+const APP_VERSION = 'v1.634';
 function runSelfCheck(){
   const el = document.getElementById('selfCheck');
   if(!el) return;
@@ -1851,6 +1862,15 @@ function settingsLog(text){
   try{ if(window.LabCalLog) LabCalLog.add('info', 'Settings: ' + text); }catch(e){}
   try{ if(typeof renderErrLog === 'function') renderErrLog(); }catch(e){}
 }
+// v1.634: Settings → Worksheet menu
+(function(){
+  var c = document.getElementById('fullMoreChk'); if(!c) return;
+  try{ c.checked = localStorage.getItem('labcal.ui.fullMore') === '1'; }catch(e){}
+  c.addEventListener('change', function(){
+    try{ if(c.checked) localStorage.setItem('labcal.ui.fullMore','1'); else localStorage.removeItem('labcal.ui.fullMore'); }
+    catch(e){ alert('This iPad would not keep the setting (storage blocked).'); c.checked = !c.checked; }
+  });
+})();
 function renderSettingsHint(){
   const hint = document.getElementById('settingsHint');
   if(!hint || !window.LabCalBackup) return;

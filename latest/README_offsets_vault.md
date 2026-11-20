@@ -3,6 +3,21 @@
 Load each offsets file **once, on the home page**. Every worksheet then picks it
 up automatically until the reference thermometer's certificate expires.
 
+## v1.634 — Hold − / + for the loading time; no "entered … OK" lines; More… hidden on worksheets
+
+Radek (20 Nov 2026).
+- "Before you start" (probes and loading time): press and hold − or + and the
+  minutes keep going, faster the longer it is held. A single tap is still one
+  minute. + still stops at now. (labcal_probestart.js)
+- Live probes: the green "Probes … entered" / "Probes loaded at … entered" lines
+  with an OK to tap are gone — what the worksheet took is already on the card.
+  Something NOT entered still shows, with its OK. (live_probes.html)
+- Calibration worksheets (SNMD, SMD, NSMD, 19/24, IBB): More… is hidden; only
+  Change worksheet… stays, as its own button. Nothing removed — Settings →
+  Worksheet menu → "Show the full More… menu" brings the old list back on this
+  iPad. (labcal_nav.js, index.html)
+No change to calculations, tolerances, rounding, certificate numbering, PDF.
+
 ## v1.633 — Job sheet: a note under a unit no longer ends the list; wrapped locations kept
 
 Radek (19 Nov 2026, ENQ145604 Spire Regency — 10 units). Only 3 were read: under
