@@ -1,4 +1,4 @@
-(window.LabCalBuild = window.LabCalBuild || {})['labcal_tablock.js'] = 'v1.635';  // file version — see labcal_build.js
+(window.LabCalBuild = window.LabCalBuild || {})['labcal_tablock.js'] = 'v1.636';  // file version — see labcal_build.js
 /* ---------------------------------------------------------------------
    LabCal — several units in several tabs, safely (v1.559)
    ---------------------------------------------------------------------

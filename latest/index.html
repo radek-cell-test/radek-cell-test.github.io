@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta name="labcal-build" content="v1.635">
+<meta name="labcal-build" content="v1.636">
 <script src="labcal_build.js"></script>
 <script src="labcal_errlog.js"></script>
 <script src="labcal_shell.js"></script>  <!-- v1.619: side menu -->
@@ -601,7 +601,7 @@ footer{
 
   <footer>
     <span>LabCal Calibration Suite · offline worksheet toolkit</span>
-    <span id="footYear">v1.635</span>
+    <span id="footYear">v1.636</span>
   </footer>
 
 </div>
@@ -802,7 +802,7 @@ function renderDate(){
   const d = new Date();
   const opts = {day:'2-digit', month:'short', year:'numeric'};
   document.getElementById('todayDate').textContent = d.toLocaleDateString('en-GB', opts).toUpperCase();
-  document.getElementById('footYear').textContent = 'v1.635 · ' + d.getFullYear();
+  document.getElementById('footYear').textContent = 'v1.636 · ' + d.getFullYear();
 }
 
 // ---- Fullscreen toggle (Android/desktop browsers; on iOS, use
@@ -1641,7 +1641,7 @@ function renderPdfQuality(){
 // which is right — but it also means a file that never got uploaded fails
 // silently. Say so plainly instead.
 // ---------------------------------------------------------------------
-const APP_VERSION = 'v1.635';
+const APP_VERSION = 'v1.636';
 function runSelfCheck(){
   const el = document.getElementById('selfCheck');
   if(!el) return;

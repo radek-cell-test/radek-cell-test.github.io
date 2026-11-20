@@ -3,6 +3,15 @@
 Load each offsets file **once, on the home page**. Every worksheet then picks it
 up automatically until the reference thermometer's certificate expires.
 
+## v1.636 — Live probes compact: 6–7 units on one iPad screen
+
+Radek (20 Nov 2026). Same data and rules, new layout (live_probes.html only):
+one dark "next" bar written out in full (time · serial · model — next step ·
+location · in N min) and small counts instead of four big tiles; each unit is one
+~50 px row — serial + model, then probes · "in HH:MM" · status · location — with
+its bars in the same row (also on an iPad in portrait, where each unit used to be
+a ~280 px card); thin thermometer lines. Tap a unit → its worksheet (› link kept).
+
 ## v1.635 — Unit list beside the worksheet: full serial, location, probes and since when
 
 Radek (20 Nov 2026). The unit ▾ panel on a worksheet: each unit now has two lines —

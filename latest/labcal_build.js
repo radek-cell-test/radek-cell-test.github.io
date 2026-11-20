@@ -18,7 +18,7 @@
  */
 (function (global) {
   'use strict';
-  var VERSION = 'v1.635';
+  var VERSION = 'v1.636';
   var reg = global.LabCalBuild = global.LabCalBuild || {};
   reg['labcal_build.js'] = VERSION;
 

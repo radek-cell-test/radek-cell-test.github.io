@@ -1,4 +1,4 @@
-(window.LabCalBuild = window.LabCalBuild || {})['labcal_timing.js'] = 'v1.635';  // file version — see labcal_build.js
+(window.LabCalBuild = window.LabCalBuild || {})['labcal_timing.js'] = 'v1.636';  // file version — see labcal_build.js
 /* ==========================================================================
    LabCal — stabilisation & cycle-time checks (v1.551; messages with times v1.555)
    --------------------------------------------------------------------------

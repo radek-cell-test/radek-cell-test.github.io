@@ -1,4 +1,4 @@
-(window.LabCalBuild = window.LabCalBuild || {})['labcal_shell.js'] = 'v1.635';  // file version — see labcal_build.js
+(window.LabCalBuild = window.LabCalBuild || {})['labcal_shell.js'] = 'v1.636';  // file version — see labcal_build.js
 /* LabCal v1.620 (logo) / v1.619 — side menu on every page (UI redesign, stage 1).
  * ---------------------------------------------------------------------------
  * Radek (6 Nov 2026): the "Licznik Prądu" look — a menu down the left side on

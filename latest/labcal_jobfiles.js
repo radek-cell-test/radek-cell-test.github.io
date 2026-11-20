@@ -1,4 +1,4 @@
-(window.LabCalBuild = window.LabCalBuild || {})['labcal_jobfiles.js'] = 'v1.635';  // file version — see labcal_build.js
+(window.LabCalBuild = window.LabCalBuild || {})['labcal_jobfiles.js'] = 'v1.636';  // file version — see labcal_build.js
 /* ---------------------------------------------------------------------
    LabCal — the jobsheet PDF of each job (v1.585, Radek)
    ---------------------------------------------------------------------

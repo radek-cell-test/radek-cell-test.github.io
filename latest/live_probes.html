@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta name="labcal-build" content="v1.635">
+<meta name="labcal-build" content="v1.636">
 <script src="labcal_build.js"></script>
 <script src="labcal_errlog.js"></script>
 <script src="labcal_shell.js"></script>  <!-- v1.619: side menu -->
@@ -295,6 +295,73 @@ body{background:#F4F6F9;color:var(--ink);font-family:var(--sans);-webkit-font-sm
 .lp-grp .lp-tap{grid-column:1/-1;font-size:13px;color:#33414C;padding:0 18px 8px}
 @media (max-width:899px){.lp-grp{grid-template-columns:minmax(0,1fr)}.lp-grp .lp-gbars{margin:0 14px;height:44px}}
 @media print{.lcs-menu{display:none}}
+
+/* ===== v1.636 (Radek, 20 Nov 2026): compact Live probes — 6–7 units on one iPad screen =====
+   Same data and logic; only the layout. One "next" bar instead of four tiles, one
+   ~50 px row per unit with its bars in the same row, thermometer line thin. */
+.wrap{padding:14px 16px 40px}
+.lp-head{margin-bottom:8px;align-items:baseline}
+.lp-head h1{font-size:24px}
+.lp-head p{display:none}
+.lp-tiles{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.lp-tile{border-radius:999px;padding:3px 11px;display:flex;align-items:baseline;gap:6px;border:1px solid var(--line)}
+.lp-tile span{font-size:12px;font-weight:600;order:2}
+.lp-tile b{font-size:14px;margin:0;line-height:1.3}
+.lp-tile small{display:none}
+.lp-tile.t-next{order:-1;flex:1 1 100%;border-radius:14px;background:#10293A;border-color:#10293A;padding:9px 14px;align-items:center;gap:12px}
+.lp-tile.t-next b{font-size:26px;color:#7FD0FF;order:0;font-variant-numeric:tabular-nums}
+.lp-tile.t-next span{order:1;display:none}
+.lp-tile.t-next small{display:block;order:1;flex:1;min-width:0;color:#fff;font-size:14.5px;font-weight:700;white-space:normal;margin:0}
+.lp-tile.t-next small i{display:block;font-style:normal;font-weight:500;font-size:12.5px;color:#B9CCDA}
+.lp-tile.t-next em{order:2;font-style:normal;font-size:12px;font-weight:700;background:#24435A;color:#fff;border-radius:999px;padding:4px 10px;white-space:nowrap}
+.lp-sec{margin:8px 0 6px}
+.lp-zoombar{padding:4px 12px}
+.lp-grid{--info:350px}
+.lp-axis{height:32px}
+.lp-axis .lp-ul{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding-left:12px}
+.lp-row{min-height:50px;cursor:pointer}
+.lp-row .lp-info{padding:5px 8px 5px 10px;gap:0;border-left:4px solid #C9D2DA;align-items:center}
+.lp-row.k-stab .lp-info,.lp-row.k-wait .lp-info{border-left-color:var(--stab)}
+.lp-row.k-cycle .lp-info{border-left-color:var(--cycle)}
+.lp-row.k-adjust .lp-info{border-left-color:var(--adjust)}
+.lp-row.k-ready .lp-info{border-left-color:var(--cert)}
+.lp-row .lp-ico,.lp-row .lp-chip{display:none}
+.lp-row .lp-t1{display:flex;align-items:baseline;gap:6px;min-width:0;white-space:nowrap}
+.lp-row .lp-t1.sn-first .lp-sn{font-size:14px;font-weight:800}
+.lp-row .lp-t1.sn-first .lp-md{font-size:11.5px;margin-left:0;overflow:hidden;text-overflow:ellipsis}
+.lp-l2{display:flex;align-items:center;gap:6px;margin-top:2px;min-width:0;font-size:12px;color:#4E5E6A;white-space:nowrap}
+.lp-l2 > *{flex:none}
+.lp-row .lp-probes{margin:0;gap:3px;font-size:0}
+.lp-row .lp-probes b{font-size:11px;padding:0 5px}
+.lp-in{color:#33414C}
+.lp-row .lp-st{margin:0;font-size:12.5px;font-weight:800;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.lp-row .lp-info{overflow:hidden}
+.lp-row .lp-txt{overflow:hidden}
+.lp-row .lp-t2{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;margin:0;font-size:12px;color:#6B7A88}
+.lp-row .lp-acts{margin:0 0 0 auto;flex:none;align-self:flex-start}
+.lp-row .lp-open{min-height:0;margin:0;padding:0 2px 0 8px;border:0;background:transparent;font-size:17px;font-weight:800;line-height:1}
+.lp-row .lp-open .lp-ot{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.lp-row .lp-bars{min-height:50px}
+.lp-row .lp-seg{height:22px;margin-top:-11px;line-height:22px;font-size:11px}
+.lp-row .lp-q{margin-top:4px}
+.lp-grp{min-height:36px;border-top-width:1px}
+.lp-grp .lp-info{padding:4px 10px 4px 12px}
+.lp-gname{font-size:13px}
+.lp-gfree{font-size:11.5px;margin-top:0}
+.lp-gbars{min-height:34px}
+.lp-grp .lp-seg.lp-occ{height:20px;margin-top:-10px;line-height:20px}
+.lp-foot{padding:6px 12px;font-size:12px}
+.lp-note{font-size:11.5px}
+/* keep unit + bars side by side on an iPad in portrait (the old card layout below 900 px made each unit ~280 px tall) */
+@media (max-width:899px) and (min-width:600px){
+  .lp-grid{--info:320px}
+  .lp-axis,.lp-row,.lp-grp{grid-template-columns:var(--info) minmax(0,1fr)}
+  .lp-axis .lp-ul{display:block}
+  .lp-axis .lp-track,.lp-bars{margin:0 10px 0 0}
+  .lp-row .lp-info{padding:5px 8px 5px 10px}
+  .lp-row .lp-bars,.lp-grp .lp-gbars{height:auto;min-height:0}
+  .lp-tap,.lp-grp .lp-tap{grid-column:1/-1;padding:0 12px 6px}
+}
 </style>
 <link rel="stylesheet" href="labcal_shell.css">
 </head>
@@ -895,10 +962,16 @@ body{background:#F4F6F9;color:var(--ink);font-family:var(--sans);-webkit-font-sm
     try { d = S.live(); } catch (e) { console.error('Live probes failed', e); grid.innerHTML = '<div class="lp-empty"><b>Live probes could not read the worksheets</b>' + esc(e && e.message) + '</div>'; return; }
     last = d;
     clock.textContent = new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' · ' + hm(d.now);
+    // v1.636: one dark "next" bar written out in full + small counts
+    var nx = d.next, nr = nx && nx.row;
+    var nxWhat = nr ? (nr.set && nr.set.label ? nr.set.label : nr.text) : '';
     tiles.innerHTML =
       tileHtml('t-run', 'Running', String(d.running), d.running ? 'stabilising, cycling or adjusting' : 'nothing running') +
       tileHtml('t-ready', 'Ready for next step', String(d.ready), d.ready ? 'waiting for you' : '') +
-      tileHtml('t-next', 'Next action', d.next ? d.next.text : '—', d.next ? (d.next.row.model || d.next.row.sheetName) + ' ' + d.next.row.serial : 'no timer running') +
+      '<div class="lp-tile t-next"><span>Next action</span><b>' + esc(nx ? nx.text : '—') + '</b><small>' +
+        (nr ? esc((nr.serial || '') + ' · ' + (nr.model || nr.sheetName) + ' — ' + nxWhat) + '<i>' + esc([nr.location, nr.text].filter(Boolean).join(' · ')) + '</i>'
+            : 'No timer running' + '<i>Nothing is stabilising or measuring right now</i>') + '</small>' +
+        (nx ? '<em>in ' + esc(Math.max(0, nx.at - d.now)) + ' min</em>' : '') + '</div>' +
       tileHtml('t-fin', 'Finished today', String(d.finished), '');
     // v1.628: thermometer cards replaced by a "measuring" line per thermometer (below)
     // v1.627: plans — a unit not started yet with a plan moves onto the timeline
@@ -971,17 +1044,20 @@ body{background:#F4F6F9;color:var(--ink);font-family:var(--sans);-webkit-font-sm
       html += '<div class="lp-row k-' + r.kind + (r.done ? ' done' : '') + (r.planned ? ' planned' : '') + '" data-row="' + i + '" data-serial="' + esc(r.serial) + '">' +
         '<div class="lp-info"><span class="lp-ico">' + ICON + '</span><div class="lp-txt">' +
           // v1.630 (Radek): the serial number leads, then the model
+          // v1.636: line 1 serial + model (+ › on the right); line 2 probes · in HH:MM · status · location
           '<div class="lp-t1 sn-first"><span class="lp-sn">' + esc(r.serial || 'no serial') + '</span><span class="lp-md">' + esc(r.model || r.sheetName) + '</span></div>' +
-          '<div class="lp-t2" title="' + esc(where) + '">' + esc(where) + '</div>' +
+          '<div class="lp-l2">' + probesHtml(r) + inAtHtml(r) +
           '<div class="lp-st">' + esc(r.text) + '</div>' +
+          '<div class="lp-t2" title="' + esc(where) + '">' + esc(where) + '</div></div>' +
           kitChip(r) +
+          queueHtml(r.job, r.serial, r.done) +
+        '</div>' +
           '<div class="lp-acts">' +
           // v1.628 (Radek): view only — no Set / Probes buttons here any more
           // v1.624 (Radek): a finished unit → the job's list of units, not its worksheet
-          (r.link ? '<a class="lp-open" href="' + esc(r.done ? String(r.link).replace(/&open=1$/, '') : r.link) + '">' + (r.done ? 'View on job ›' : 'Open worksheet ›') + '</a>' : '') +
+          (r.link ? '<a class="lp-open" href="' + esc(r.done ? String(r.link).replace(/&open=1$/, '') : r.link) + '"><span class="lp-ot">' + (r.done ? 'View on job ' : 'Open worksheet ') + '</span>›</a>' : '') +
           '</div>' +
-          queueHtml(r.job, r.serial, r.done) +
-        '</div></div>' +
+        '</div>' +
         '<div class="lp-bars">' + ticks.replace(/<span>[^<]*<\/span>/g, '') + bars + planSegs(r, from, to, span) + qPins(r, d.now, from, to, pct) + (nowIn ? '<div class="lp-nowline" style="left:' + pct(d.now) + '"></div>' : '') + '</div>' +
         '<div class="lp-tap"></div>' +
       '</div>';
@@ -1194,13 +1270,26 @@ body{background:#F4F6F9;color:var(--ink);font-family:var(--sans);-webkit-font-sm
   // the unit's thermometer and probes (in use now, else the ones on its worksheet)
   // v1.630 (Radek): thermometer and probes each on a line of their own — the
   // probe numbers used to be cut off at the end of one narrow chip.
+  // v1.636: the thermometer chip stays in the page (hidden — the group line says the thermometer);
+  // the probes moved to line 2 of the row (probesHtml)
+  function rowProbeNames(r) { return r.probes.length ? r.probes.map(function (p) { return p.probe; }) : (r.allProbes || []); }
   function kitChip(r) {
     if (!r.fam) return '';
-    var names = r.probes.length ? r.probes.map(function (p) { return p.probe; }) : r.allProbes;
+    var names = rowProbeNames(r);
     var fam = r.fam === 'dostmann' ? 'Dostmann' : 'Fluke & Comark';
     return '<span class="lp-chip f-' + esc(r.fam) + '" title="' + esc(fam + ' ' + (r.therm || '') + (names.length ? ' — probes ' + names.join(', ') : '')) + '">' + esc(fam) +
-      ' <i>' + esc(r.therm || 'no thermometer yet') + '</i></span>' +
-      '<div class="lp-probes">' + (names.length ? 'Probes ' + names.map(function (n) { return '<b>' + esc(n) + '</b>'; }).join('') : 'No probes chosen yet') + '</div>';
+      ' <i>' + esc(r.therm || 'no thermometer yet') + '</i></span>';
+  }
+  function probesHtml(r) {
+    if (!r.fam) return '';
+    var names = rowProbeNames(r);
+    return '<div class="lp-probes">' + (names.length ? 'Probes ' + names.map(function (n) { return '<b>' + esc(n) + '</b>'; }).join('') : '<span style="font-size:12px">no probes yet</span>') + '</div>';
+  }
+  function inAtHtml(r) {
+    if (r.done) return '';
+    var st = (r.segs || []).filter(function (g) { return g.kind === 'stab' && g.row === 'af' && !g.planned; })[0] ||
+             (r.segs || []).filter(function (g) { return g.kind === 'stab' && g.row === 'af'; })[0];
+    return st ? '<span class="lp-in">in ' + esc(hm(st.s)) + '</span>' : '';
   }
 
   // Tap a bar → its times under the row (no hover on an iPad).
@@ -1237,6 +1326,12 @@ body{background:#F4F6F9;color:var(--ink);font-family:var(--sans);-webkit-font-sm
       var row = b.closest('.lp-row, .lp-grp'), tap = row && row.querySelector('.lp-tap');
       if (tap) tap.textContent = b.getAttribute('data-what');
       return;
+    }
+    // v1.636: tap a unit (its text part) → its worksheet, like the › link
+    var info = t.closest('.lp-row .lp-info');
+    if (info && !t.closest('a,button')) {
+      var lk = info.closest('.lp-row').querySelector('a.lp-open');
+      if (lk) { location.href = lk.getAttribute('href'); return; }
     }
     // v1.623 (Radek): tap the unit's timeline where the next time should be
     var track = t.closest('.lp-bars.can-set');
